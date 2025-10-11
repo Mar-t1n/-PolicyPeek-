@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PolicyPeek - Manual Analysis</title>
+  <link rel="stylesheet" href="analysis.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="PolicyPeek" class="logo-icon">
+        <h1>PolicyPeek</h1>
+      </div>
+      <p class="subtitle">Manual Policy Analysis</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Input Section -->
+      <section id="input-section" class="input-section">
+        <h2>Paste Policy Text</h2>
+        <p class="description">
+          Copy and paste the privacy policy or terms of service text below for analysis.
+        </p>
+        
+        <textarea 
+          id="policy-input" 
+          class="policy-input" 
+          placeholder="Paste the policy text here..."
+          rows="10"
+        ></textarea>
+        
+        <div class="actions">
+          <button id="analyze-btn" class="btn btn-primary">
+            Analyze Policy
+          </button>
+          <button id="clear-btn" class="btn btn-secondary">
+            Clear
+          </button>
+        </div>
+      </section>
+
+      <!-- Results Section -->
+      <section id="results-section" class="results-section hidden">
+        <h2>Analysis Results</h2>
+        <div id="results-content" class="results-content">
+          <!-- Results will be displayed here -->
+        </div>
+        <div class="actions">
+          <button id="new-analysis-btn" class="btn btn-secondary">
+            New Analysis
+          </button>
+        </div>
+      </section>
+
+      <!-- Loading State -->
+      <section id="loading-section" class="loading-section hidden">
+        <div class="spinner"></div>
+        <p>Analyzing policy...</p>
+        <p class="loading-detail">This may take a moment</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="analysis.js" type="module"></script>
+</body>
+</html>

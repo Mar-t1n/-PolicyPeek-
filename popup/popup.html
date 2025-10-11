@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PolicyPeek</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="PolicyPeek" class="logo-icon">
+        <h1>PolicyPeek</h1>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Loading State -->
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Scanning page...</p>
+      </div>
+
+      <!-- Links Found -->
+      <div id="links-container" class="links-container hidden">
+        <h2>Policy Links Found</h2>
+        <div id="links-list" class="links-list">
+          <!-- Links will be populated here -->
+        </div>
+      </div>
+
+      <!-- No Links Found -->
+      <div id="no-links" class="no-links hidden">
+        <div class="icon">🔍</div>
+        <h2>No Policy Links Detected</h2>
+        <p>We didn't find any privacy policy or terms of service links on this page.</p>
+        <button id="manual-analysis-btn" class="btn btn-primary">
+          Analyze Policy Manually
+        </button>
+      </div>
+
+      <!-- Error State -->
+      <div id="error" class="error hidden">
+        <div class="icon">⚠️</div>
+        <h2>Error</h2>
+        <p id="error-message"></p>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <button id="refresh-btn" class="btn btn-secondary">Refresh Scan</button>
+      <button id="settings-btn" class="btn btn-secondary">Settings</button>
+    </footer>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

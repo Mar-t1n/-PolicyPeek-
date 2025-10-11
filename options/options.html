@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PolicyPeek - Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="PolicyPeek" class="logo-icon">
+        <h1>PolicyPeek Settings</h1>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="section">
+        <h2>General Settings</h2>
+        <p class="description">Configure how PolicyPeek works</p>
+        
+        <div class="setting">
+          <label for="notifications-enabled" class="setting-label">
+            <span>Show notifications when policy links are detected</span>
+          </label>
+          <input type="checkbox" id="notifications-enabled" checked>
+        </div>
+        
+        <div class="setting">
+          <label for="auto-scan" class="setting-label">
+            <span>Automatically scan pages for policy links</span>
+          </label>
+          <input type="checkbox" id="auto-scan" checked>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>About</h2>
+        <p class="description">PolicyPeek v1.0.0</p>
+        <p class="about-text">
+          PolicyPeek helps you understand privacy policies and terms of service 
+          by automatically detecting and analyzing them using Chrome's Built-in AI.
+        </p>
+        <p class="about-text">
+          Created for the Google Chrome Built-in AI Challenge 2025.
+        </p>
+      </section>
+
+      <section class="section">
+        <button id="save-btn" class="btn btn-primary">Save Settings</button>
+      </section>
+    </main>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
