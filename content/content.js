@@ -24,6 +24,10 @@ const POLICY_KEYWORDS = [
 
 // State
 let detectedLinks = [];
+let isScanning = false;
+let scanTimeout = null;
+let processedUrls = new Set();
+let activeTooltip = null;
 
 // Initialize content script
 function init() {
@@ -37,10 +41,35 @@ function init() {
   
   // Set up mutation observer to detect dynamically added links
   setupMutationObserver();
+  
+  // Listen for clicks outside tooltips to close them
+  document.addEventListener('click', handleDocumentClick);
+}
+
+// Handle clicks outside tooltips to close them
+function handleDocumentClick(event) {
+  if (activeTooltip && !event.target.closest('.policypeek-tooltip') && !event.target.closest('.policypeek-notifier')) {
+    closeActiveTooltip();
+  }
+}
+
+// Close active tooltip
+function closeActiveTooltip() {
+  if (activeTooltip) {
+    activeTooltip.remove();
+    activeTooltip = null;
+  }
 }
 
 // Scan the page for policy links
 function scanForPolicyLinks() {
+  // Prevent concurrent scans
+  if (isScanning) {
+    console.log('PolicyPeek: Scan already in progress, skipping...');
+    return;
+  }
+  
+  isScanning = true;
   console.log('PolicyPeek: Scanning for policy links...');
   
   detectedLinks = [];
@@ -52,20 +81,46 @@ function scanForPolicyLinks() {
     const linkText = link.textContent.toLowerCase().trim();
     const linkHref = link.href.toLowerCase();
     
-    // Check if link matches policy keywords
-    const isPolicy = POLICY_KEYWORDS.some(keyword => 
-      linkText.includes(keyword) || linkHref.includes(keyword.replace(/\s+/g, '-'))
-    );
+    // Skip if already processed
+    if (processedUrls.has(link.href)) {
+      return;
+    }
     
-    if (isPolicy) {
+    // Check if link matches policy keywords
+    const isPolicy = POLICY_KEYWORDS.some(keyword => {
+      // Check link text
+      if (linkText.includes(keyword)) {
+        return true;
+      }
+      
+      // Check href with various formats: hyphenated, underscored, concatenated
+      const hyphenated = keyword.replace(/\s+/g, '-');
+      const underscored = keyword.replace(/\s+/g, '_');
+      const concatenated = keyword.replace(/\s+/g, '');
+      
+      return linkHref.includes(hyphenated) || 
+             linkHref.includes(underscored) || 
+             linkHref.includes(concatenated);
+    });
+    
+    if (isPolicy && !link.querySelector('.policypeek-notifier')) {
+      // Mark this URL as processed
+      processedUrls.add(link.href);
+      
+      // Store link data
       detectedLinks.push({
         text: link.textContent.trim(),
         url: link.href,
         element: link
       });
       
-      // Mark the link (to be implemented in Phase 2)
-      console.log('Policy link found:', link.textContent, link.href);
+      // Add CSS class to the link
+      link.classList.add('policypeek-detected-link');
+      
+      // Inject notifier badge
+      injectNotifier(link);
+      
+      console.log('Policy link found:', link.textContent.trim(), link.href);
     }
   });
   
@@ -75,6 +130,8 @@ function scanForPolicyLinks() {
   if (detectedLinks.length > 0) {
     notifyLinksFound();
   }
+  
+  isScanning = false;
 }
 
 // Notify background script about detected links
@@ -88,6 +145,171 @@ function notifyLinksFound() {
   });
 }
 
+// Inject visual notifier badge next to policy link
+function injectNotifier(linkElement) {
+  // Create notifier badge
+  const notifier = document.createElement('span');
+  notifier.className = 'policypeek-notifier';
+  notifier.setAttribute('role', 'button');
+  notifier.setAttribute('aria-label', 'Review with PolicyPeek');
+  notifier.innerHTML = '🔍';
+  
+  // Add click handler
+  notifier.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handleNotifierClick(linkElement, notifier);
+  });
+  
+  // Insert notifier after the link
+  linkElement.insertAdjacentElement('afterend', notifier);
+  
+  // Add entrance animation
+  notifier.classList.add('animate');
+  setTimeout(() => {
+    notifier.classList.remove('animate');
+  }, 3000);
+}
+
+// Handle notifier click - show tooltip with "Review with PolicyPeek"
+function handleNotifierClick(linkElement, notifierElement) {
+  // Close any existing tooltip
+  closeActiveTooltip();
+  
+  // Create tooltip
+  const tooltip = document.createElement('div');
+  tooltip.className = 'policypeek-tooltip show';
+  
+  // Create tooltip content
+  const tooltipContent = document.createElement('div');
+  tooltipContent.className = 'policypeek-tooltip-content';
+  
+  const title = document.createElement('div');
+  title.className = 'policypeek-tooltip-title';
+  title.textContent = 'Review with PolicyPeek';
+  
+  const description = document.createElement('div');
+  description.className = 'policypeek-tooltip-description';
+  description.textContent = 'Get an AI-powered summary and key points';
+  
+  const button = document.createElement('button');
+  button.className = 'policypeek-tooltip-button';
+  button.textContent = 'Analyze Policy';
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    analyzePolicy(linkElement.href, linkElement.textContent.trim());
+  });
+  
+  tooltipContent.appendChild(title);
+  tooltipContent.appendChild(description);
+  tooltipContent.appendChild(button);
+  tooltip.appendChild(tooltipContent);
+  
+  // Position tooltip
+  document.body.appendChild(tooltip);
+  const notifierRect = notifierElement.getBoundingClientRect();
+  const tooltipRect = tooltip.getBoundingClientRect();
+  
+  // Position below the notifier
+  let top = notifierRect.bottom + window.scrollY + 8;
+  let left = notifierRect.left + window.scrollX - (tooltipRect.width / 2) + (notifierRect.width / 2);
+  
+  // Keep tooltip in viewport
+  if (left < 10) left = 10;
+  if (left + tooltipRect.width > window.innerWidth - 10) {
+    left = window.innerWidth - tooltipRect.width - 10;
+  }
+  
+  tooltip.style.top = `${top}px`;
+  tooltip.style.left = `${left}px`;
+  
+  activeTooltip = tooltip;
+}
+
+// Analyze policy by fetching content and sending to background for AI processing
+function analyzePolicy(policyUrl, policyTitle) {
+  console.log('PolicyPeek: Analyzing policy:', policyUrl);
+  
+  // Close tooltip
+  closeActiveTooltip();
+  
+  // Show loading notification
+  showNotification('Analyzing policy...', 'loading');
+  
+  // Fetch the policy page content
+  fetch(policyUrl)
+    .then(response => response.text())
+    .then(html => {
+      // Parse HTML and extract text content
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      // Remove scripts, styles, and other non-content elements
+      const elementsToRemove = doc.querySelectorAll('script, style, nav, header, footer, iframe, noscript');
+      elementsToRemove.forEach(el => el.remove());
+      
+      // Get main content text
+      const bodyText = doc.body.innerText || doc.body.textContent;
+      const cleanText = bodyText
+        .replace(/\s+/g, ' ')
+        .replace(/\n+/g, '\n')
+        .trim();
+      
+      console.log(`PolicyPeek: Extracted ${cleanText.length} characters from policy`);
+      
+      // Send to background script for AI analysis
+      chrome.runtime.sendMessage({
+        type: 'ANALYZE_POLICY',
+        url: policyUrl,
+        title: policyTitle,
+        content: cleanText.substring(0, 50000) // Limit to 50k chars for AI processing
+      }).then(response => {
+        if (response && response.success) {
+          // Show success notification
+          showNotification('Analysis complete! Check the popup.', 'success');
+        } else {
+          showNotification('Analysis failed. Please try again.', 'error');
+        }
+      }).catch(error => {
+        console.error('PolicyPeek: Analysis error:', error);
+        showNotification('Could not analyze policy. Try opening it manually.', 'error');
+      });
+    })
+    .catch(error => {
+      console.error('PolicyPeek: Fetch error:', error);
+      showNotification('Could not fetch policy content. Try opening it manually.', 'error');
+    });
+}
+
+// Show notification to user
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `policypeek-notification policypeek-notification-${type}`;
+  notification.textContent = message;
+  
+  document.body.appendChild(notification);
+  
+  // Show notification
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 10);
+  
+  // Auto-hide after 3 seconds (unless loading)
+  if (type !== 'loading') {
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    }, 3000);
+  } else {
+    // Store reference to remove later
+    notification.dataset.loading = 'true';
+  }
+}
+
 // Set up message listener for communication with popup
 function setupMessageListener() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -98,6 +320,26 @@ function setupMessageListener() {
         success: true,
         links: detectedLinks.map(l => ({ text: l.text, url: l.url }))
       });
+    }
+    
+    if (message.type === 'RESCAN_PAGE') {
+      // Clear processed URLs to allow re-detection
+      processedUrls.clear();
+      
+      // Remove existing notifiers
+      document.querySelectorAll('.policypeek-notifier').forEach(notifier => {
+        notifier.remove();
+      });
+      
+      // Remove detected link classes
+      document.querySelectorAll('.policypeek-detected-link').forEach(link => {
+        link.classList.remove('policypeek-detected-link');
+      });
+      
+      // Rescan
+      scanForPolicyLinks();
+      
+      sendResponse({ success: true });
     }
     
     return true; // Keep channel open for async response
@@ -122,8 +364,16 @@ function setupMutationObserver() {
     });
     
     if (shouldRescan) {
-      console.log('PolicyPeek: DOM changed, rescanning...');
-      scanForPolicyLinks();
+      // Debounce: Clear existing timeout and set new one
+      if (scanTimeout) {
+        clearTimeout(scanTimeout);
+      }
+      
+      scanTimeout = setTimeout(() => {
+        console.log('PolicyPeek: DOM changed, rescanning after debounce...');
+        scanForPolicyLinks();
+        scanTimeout = null;
+      }, 1000); // Wait 1 second after last change
     }
   });
   
@@ -131,6 +381,8 @@ function setupMutationObserver() {
     childList: true,
     subtree: true
   });
+  
+  console.log('PolicyPeek: MutationObserver set up with 1-second debounce');
 }
 
 // Initialize when DOM is ready

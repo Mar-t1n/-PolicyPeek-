@@ -13,6 +13,7 @@ const errorMessageEl = document.getElementById('error-message');
 
 // Buttons
 const manualAnalysisBtn = document.getElementById('manual-analysis-btn');
+const manualAnalysisBtnAlt = document.getElementById('manual-analysis-btn-alt');
 const refreshBtn = document.getElementById('refresh-btn');
 const settingsBtn = document.getElementById('settings-btn');
 
@@ -31,11 +32,22 @@ async function init() {
     }
 
     // Request policy links from content script
-    // This will be implemented in Phase 2
-    setTimeout(() => {
-      // Placeholder: Show no links for now
-      showNoLinks();
-    }, 1000);
+    chrome.tabs.sendMessage(tab.id, { type: 'GET_POLICY_LINKS' })
+      .then(response => {
+        if (response && response.success) {
+          if (response.links && response.links.length > 0) {
+            showLinks(response.links);
+          } else {
+            showNoLinks();
+          }
+        } else {
+          showNoLinks();
+        }
+      })
+      .catch(error => {
+        console.log('Could not connect to content script:', error);
+        showNoLinks();
+      });
 
   } catch (error) {
     console.error('Error initializing popup:', error);
@@ -56,8 +68,59 @@ function showLinks(links) {
   // Clear existing links
   linksListEl.innerHTML = '';
   
-  // Populate links (to be implemented)
-  console.log('Links to display:', links);
+  // Populate links
+  links.forEach(link => {
+    const linkItem = document.createElement('div');
+    linkItem.className = 'link-item';
+    
+    const linkInfo = document.createElement('div');
+    linkInfo.className = 'link-info';
+    
+    const linkTitle = document.createElement('div');
+    linkTitle.className = 'link-title';
+    linkTitle.textContent = link.text || 'Policy Link';
+    
+    const linkUrl = document.createElement('div');
+    linkUrl.className = 'link-url';
+    linkUrl.textContent = link.url;
+    
+    linkInfo.appendChild(linkTitle);
+    linkInfo.appendChild(linkUrl);
+    
+    const analyzeButton = document.createElement('button');
+    analyzeButton.className = 'analyze-btn';
+    analyzeButton.textContent = 'Analyze';
+    analyzeButton.onclick = () => analyzeLink(link.url, link.text);
+    
+    linkItem.appendChild(linkInfo);
+    linkItem.appendChild(analyzeButton);
+    linksListEl.appendChild(linkItem);
+  });
+  
+  console.log(`Displayed ${links.length} policy links`);
+}
+
+// Analyze a specific link
+async function analyzeLink(url, title) {
+  console.log('Analyzing link:', url);
+  
+  try {
+    // Get current tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    // Send message to content script to analyze
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'ANALYZE_POLICY',
+      url: url,
+      title: title
+    });
+    
+    // Close popup
+    window.close();
+    
+  } catch (error) {
+    console.error('Error analyzing link:', error);
+  }
 }
 
 function showNoLinks() {
@@ -81,13 +144,38 @@ function hideAll() {
 // Event Listeners
 manualAnalysisBtn.addEventListener('click', () => {
   console.log('Manual analysis requested');
-  // Open manual analysis page (to be implemented in Phase 3)
   chrome.tabs.create({ url: chrome.runtime.getURL('analysis/analysis.html') });
 });
 
-refreshBtn.addEventListener('click', () => {
+// Manual analysis button in links-found state
+if (manualAnalysisBtnAlt) {
+  manualAnalysisBtnAlt.addEventListener('click', () => {
+    console.log('Manual analysis requested (from links view)');
+    chrome.tabs.create({ url: chrome.runtime.getURL('analysis/analysis.html') });
+  });
+}
+
+refreshBtn.addEventListener('click', async () => {
   console.log('Refresh requested');
-  init();
+  
+  try {
+    // Get current tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    // Send rescan message to content script
+    chrome.tabs.sendMessage(tab.id, { type: 'RESCAN_PAGE' })
+      .then(() => {
+        // Reinitialize popup to show new results
+        init();
+      })
+      .catch(error => {
+        console.log('Could not rescan:', error);
+        init();
+      });
+  } catch (error) {
+    console.error('Error refreshing:', error);
+    init();
+  }
 });
 
 settingsBtn.addEventListener('click', () => {
