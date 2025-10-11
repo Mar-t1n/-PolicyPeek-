@@ -59,6 +59,7 @@ async function init() {
 function showLoading() {
   hideAll();
   loadingEl.classList.remove('hidden');
+  // Height fixed at 500px in CSS
 }
 
 function showLinks(links) {
@@ -97,8 +98,12 @@ function showLinks(links) {
     linksListEl.appendChild(linkItem);
   });
   
+  // Height fixed at 500px in CSS - no dynamic adjustment needed
+  
   console.log(`Displayed ${links.length} policy links`);
 }
+
+// Dynamic height adjustment removed - using fixed 500px height
 
 // Analyze a specific link
 async function analyzeLink(url, title) {
@@ -126,12 +131,14 @@ async function analyzeLink(url, title) {
 function showNoLinks() {
   hideAll();
   noLinksEl.classList.remove('hidden');
+  // Height fixed at 500px in CSS
 }
 
 function showError(message) {
   hideAll();
   errorEl.classList.remove('hidden');
   errorMessageEl.textContent = message;
+  // Height fixed at 500px in CSS
 }
 
 function hideAll() {
