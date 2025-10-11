@@ -233,6 +233,16 @@ body::after {
   box-shadow: none;
 }
 
+.analyze-btn-footer {
+  display: block;
+  width: auto;
+  max-width: 250px;
+  flex-basis: 100%;
+  margin-top: 2px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* Manual analysis section in links-found state */
 .manual-analysis-section {
   margin-top: 16px;
@@ -523,6 +533,7 @@ body::after {
 /* Footer */
 .footer {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 12px 20px;
   border-top: 1px solid #e5e5e5;
@@ -535,6 +546,16 @@ body::after {
 
 .footer .btn {
   flex: 1;
+  min-width: 0;
+}
+
+.footer .analyze-btn-footer {
+  flex: 0 0 auto;
+}
+
+.btn-full-width {
+  flex-basis: 100%;
+  margin-top: 0;
 }
 
 /* Utility Classes */

@@ -163,25 +163,17 @@ if (manualAnalysisBtnAlt) {
 }
 
 refreshBtn.addEventListener('click', async () => {
-  console.log('Refresh requested');
+  console.log('Refresh requested - reloading page');
   
   try {
     // Get current tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
-    // Send rescan message to content script
-    chrome.tabs.sendMessage(tab.id, { type: 'RESCAN_PAGE' })
-      .then(() => {
-        // Reinitialize popup to show new results
-        init();
-      })
-      .catch(error => {
-        console.log('Could not rescan:', error);
-        init();
-      });
+    // Reload the current page
+    chrome.tabs.reload(tab.id);
+    
   } catch (error) {
-    console.error('Error refreshing:', error);
-    init();
+    console.error('Error refreshing page:', error);
   }
 });
 
