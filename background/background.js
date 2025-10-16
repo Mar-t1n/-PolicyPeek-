@@ -16,14 +16,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 function handleLinksDetected(message, sender) {
-  chrome.notifications.create({
-    type: "basic",
-    iconUrl: "icons/icon128.png",
-    title: "PolicyPeek",
-    message: `Found ${message.count} policy link${message.count > 1 ? "s" : ""} on this page`,
-    priority: 1
-  });
+  console.log(`${message.count} policy links detected on tab ${sender.tab.id}`);
   
+  // Store detected links
   chrome.storage.local.set({
     [`links_${sender.tab.id}`]: {
       count: message.count,
