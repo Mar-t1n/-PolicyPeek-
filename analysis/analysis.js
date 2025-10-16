@@ -20,7 +20,19 @@ let isAnalyzing = false;
 function init() {
   console.log('Initializing analysis page...');
   setupEventListeners();
-  checkForSavedInput();
+  
+  // Check for URL parameters (auto-analysis from popup)
+  const urlParams = new URLSearchParams(window.location.search);
+  const policyUrl = urlParams.get('url');
+  const policyTitle = urlParams.get('title');
+  
+  if (policyUrl) {
+    // Auto-analyze from URL
+    analyzeFromUrl(policyUrl, policyTitle);
+  } else {
+    // Check for saved manual input
+    checkForSavedInput();
+  }
 }
 
 // Set up event listeners
@@ -97,6 +109,53 @@ async function simulateAnalysis(text) {
   });
 }
 
+// Analyze from URL (when clicking "Analyze" button in popup)
+async function analyzeFromUrl(url, title = 'Policy Document') {
+  console.log('Analyzing policy from URL:', url);
+  
+  showLoading();
+  
+  try {
+    // Request content from background script with timeout
+    const response = await Promise.race([
+      chrome.runtime.sendMessage({
+        type: 'ANALYZE_POLICY',
+        url: url,
+        title: title
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
+      )
+    ]);
+    
+    console.log('Response from background:', response);
+    
+    if (!response) {
+      throw new Error('No response from background script');
+    }
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to fetch policy content');
+    }
+    
+    console.log('Received policy content:', response.content.length, 'characters');
+    
+    // Display the fetched content
+    showResults({
+      title: response.title,
+      url: response.url,
+      summary: 'Policy content fetched successfully!',
+      wordCount: response.content.split(/\s+/).length,
+      characterCount: response.content.length,
+      fullText: response.content
+    });
+    
+  } catch (error) {
+    console.error('Error analyzing from URL:', error);
+    showError(error.message);
+  }
+}
+
 // Handle clear button click
 function handleClear() {
   policyInput.value = '';
@@ -123,15 +182,38 @@ function showResults(data) {
   hideAll();
   resultsSection.classList.remove('hidden');
   
-  // Display results (placeholder)
-  resultsContent.innerHTML = `
-    <div style="padding: 20px; background: #f5f5f5; border-radius: 6px;">
+  // Build results HTML
+  let html = `
+    <div style="padding: 20px; background: #f5f5f5; border-radius: 6px; margin-bottom: 20px;">
       <h3 style="margin-bottom: 12px;">Analysis Complete</h3>
-      <p><strong>Word Count:</strong> ${data.wordCount}</p>
-      <p><strong>Character Count:</strong> ${data.characterCount}</p>
+  `;
+  
+  if (data.title) {
+    html += `<p><strong>Policy:</strong> ${data.title}</p>`;
+  }
+  
+  if (data.url) {
+    html += `<p><strong>URL:</strong> <a href="${data.url}" target="_blank" style="color: #1a1a1a;">${data.url}</a></p>`;
+  }
+  
+  html += `
+      <p><strong>Word Count:</strong> ${data.wordCount.toLocaleString()}</p>
+      <p><strong>Character Count:</strong> ${data.characterCount.toLocaleString()}</p>
       <p style="margin-top: 16px; color: #666;">${data.summary}</p>
     </div>
   `;
+  
+  // Show full text if available
+  if (data.fullText) {
+    html += `
+      <div style="padding: 20px; background: white; border: 1px solid #e5e5e5; border-radius: 6px;">
+        <h4 style="margin-bottom: 12px;">Policy Text Preview (first 2000 characters)</h4>
+        <pre style="white-space: pre-wrap; word-wrap: break-word; font-size: 12px; line-height: 1.5; color: #333; max-height: 400px; overflow-y: auto;">${data.fullText.substring(0, 2000)}${data.fullText.length > 2000 ? '...\n\n[Content truncated]' : ''}</pre>
+      </div>
+    `;
+  }
+  
+  resultsContent.innerHTML = html;
 }
 
 // Show error

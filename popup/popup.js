@@ -110,15 +110,11 @@ async function analyzeLink(url, title) {
   console.log('Analyzing link:', url);
   
   try {
-    // Get current tab
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    // Open analysis page with URL parameters
+    const analysisUrl = chrome.runtime.getURL('analysis/analysis.html') + 
+      `?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`;
     
-    // Send message to content script to analyze
-    chrome.tabs.sendMessage(tab.id, {
-      type: 'ANALYZE_POLICY',
-      url: url,
-      title: title
-    });
+    chrome.tabs.create({ url: analysisUrl });
     
     // Close popup
     window.close();
@@ -152,6 +148,7 @@ function hideAll() {
 manualAnalysisBtn.addEventListener('click', () => {
   console.log('Manual analysis requested');
   chrome.tabs.create({ url: chrome.runtime.getURL('analysis/analysis.html') });
+  window.close();
 });
 
 // Manual analysis button in links-found state
@@ -159,6 +156,7 @@ if (manualAnalysisBtnAlt) {
   manualAnalysisBtnAlt.addEventListener('click', () => {
     console.log('Manual analysis requested (from links view)');
     chrome.tabs.create({ url: chrome.runtime.getURL('analysis/analysis.html') });
+    window.close();
   });
 }
 

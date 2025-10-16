@@ -227,59 +227,18 @@ function handleNotifierClick(linkElement, notifierElement) {
   activeTooltip = tooltip;
 }
 
-// Analyze policy by fetching content and sending to background for AI processing
+// Analyze policy by opening the analysis page
 function analyzePolicy(policyUrl, policyTitle) {
   console.log('PolicyPeek: Analyzing policy:', policyUrl);
   
   // Close tooltip
   closeActiveTooltip();
   
-  // Show loading notification
-  showNotification('Analyzing policy...', 'loading');
+  // Open analysis page with URL parameters
+  const analysisUrl = chrome.runtime.getURL('analysis/analysis.html') + 
+    `?url=${encodeURIComponent(policyUrl)}&title=${encodeURIComponent(policyTitle)}`;
   
-  // Fetch the policy page content
-  fetch(policyUrl)
-    .then(response => response.text())
-    .then(html => {
-      // Parse HTML and extract text content
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      
-      // Remove scripts, styles, and other non-content elements
-      const elementsToRemove = doc.querySelectorAll('script, style, nav, header, footer, iframe, noscript');
-      elementsToRemove.forEach(el => el.remove());
-      
-      // Get main content text
-      const bodyText = doc.body.innerText || doc.body.textContent;
-      const cleanText = bodyText
-        .replace(/\s+/g, ' ')
-        .replace(/\n+/g, '\n')
-        .trim();
-      
-      console.log(`PolicyPeek: Extracted ${cleanText.length} characters from policy`);
-      
-      // Send to background script for AI analysis
-      chrome.runtime.sendMessage({
-        type: 'ANALYZE_POLICY',
-        url: policyUrl,
-        title: policyTitle,
-        content: cleanText.substring(0, 50000) // Limit to 50k chars for AI processing
-      }).then(response => {
-        if (response && response.success) {
-          // Show success notification
-          showNotification('Analysis complete! Check the popup.', 'success');
-        } else {
-          showNotification('Analysis failed. Please try again.', 'error');
-        }
-      }).catch(error => {
-        console.error('PolicyPeek: Analysis error:', error);
-        showNotification('Could not analyze policy. Try opening it manually.', 'error');
-      });
-    })
-    .catch(error => {
-      console.error('PolicyPeek: Fetch error:', error);
-      showNotification('Could not fetch policy content. Try opening it manually.', 'error');
-    });
+  window.open(analysisUrl, '_blank');
 }
 
 // Show notification to user
