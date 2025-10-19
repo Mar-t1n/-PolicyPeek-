@@ -19,7 +19,11 @@ const POLICY_KEYWORDS = [
   'acceptable use policy',
   'legal notice',
   'terms & conditions',
-  'privacy & cookies'
+  'privacy & cookies',
+  'service terms',
+  'data protection policy',
+  'terms',
+  'terms of service agreement'
 ];
 
 // State
@@ -147,6 +151,11 @@ function notifyLinksFound() {
 
 // Inject visual notifier badge next to policy link
 function injectNotifier(linkElement) {
+  // Skip if link already has a notifier
+  if (linkElement.querySelector('.policypeek-notifier')) {
+    return;
+  }
+  
   // Create notifier badge
   const notifier = document.createElement('span');
   notifier.className = 'policypeek-notifier';
@@ -161,8 +170,8 @@ function injectNotifier(linkElement) {
     handleNotifierClick(linkElement, notifier);
   });
   
-  // Insert notifier after the link
-  linkElement.insertAdjacentElement('afterend', notifier);
+  // Insert notifier INSIDE the link at the end (so it stays with the link text)
+  linkElement.appendChild(notifier);
   
   // Add entrance animation
   notifier.classList.add('animate');
@@ -239,6 +248,34 @@ function analyzePolicy(policyUrl, policyTitle) {
     `?url=${encodeURIComponent(policyUrl)}&title=${encodeURIComponent(policyTitle)}`;
   
   window.open(analysisUrl, '_blank');
+}
+
+// Show notification to user
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `policypeek-notification policypeek-notification-${type}`;
+  notification.textContent = message;
+  
+  document.body.appendChild(notification);
+  
+  // Show notification
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 10);
+  
+  // Auto-hide after 3 seconds (unless loading)
+  if (type !== 'loading') {
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    }, 3000);
+  } else {
+    // Store reference to remove later
+    notification.dataset.loading = 'true';
+  }
 }
 
 // Set up message listener for communication with popup
