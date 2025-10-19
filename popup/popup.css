@@ -19,7 +19,7 @@ body {
   overflow: hidden;
 }
 
-/* Decorative Background Elements - Animated Floating Orbs */
+/* Decorative Background Elements - Static (no animation) */
 body::before {
   content: '';
   position: absolute;
@@ -31,13 +31,7 @@ body::before {
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
-  animation: float 8s ease-in-out infinite;
   filter: blur(40px);
-}
-
-@keyframes float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-20px, 20px) scale(1.1); }
 }
 
 body::after {
@@ -51,7 +45,6 @@ body::after {
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
-  animation: float 10s ease-in-out infinite reverse;
   filter: blur(35px);
 }
 
@@ -163,8 +156,6 @@ body::after {
   flex-direction: column;
   gap: 10px;
   padding: 2px;
-  max-height: 310px;
-  overflow-y: auto;
 }
 
 /* Individual link item */
@@ -372,7 +363,7 @@ body::after {
   position: relative;
 }
 
-/* Decorative error indicator - Pulsing warning line */
+/* Decorative error indicator - Static warning line */
 .error::before {
   content: '';
   position: absolute;
@@ -382,13 +373,7 @@ body::after {
   height: 3px;
   background: linear-gradient(90deg, transparent 0%, #ef4444 50%, transparent 100%);
   opacity: 0.5;
-  animation: errorPulse 1.5s ease-in-out infinite;
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
-}
-
-@keyframes errorPulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.8; }
 }
 
 .error .icon {
@@ -533,7 +518,7 @@ body::after {
 /* Footer */
 .footer {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   padding: 12px 20px;
   border-top: 1px solid #e5e5e5;
@@ -544,7 +529,12 @@ body::after {
 
 /* Removed decorative footer gradient animation */
 
-.footer .btn {
+.footer-row {
+  display: flex;
+  gap: 8px;
+}
+
+.footer-row .btn {
   flex: 1;
   min-width: 0;
 }
@@ -554,8 +544,11 @@ body::after {
 }
 
 .btn-full-width {
-  flex-basis: 100%;
-  margin-top: 0;
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 16px;
+  padding-bottom:16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* Utility Classes */

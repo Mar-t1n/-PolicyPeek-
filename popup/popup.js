@@ -66,6 +66,11 @@ function showLinks(links) {
   hideAll();
   linksContainerEl.classList.remove('hidden');
   
+  // Show manual analysis button in footer
+  if (manualAnalysisBtnAlt) {
+    manualAnalysisBtnAlt.classList.remove('hidden');
+  }
+  
   // Clear existing links
   linksListEl.innerHTML = '';
   
@@ -142,6 +147,11 @@ function hideAll() {
   linksContainerEl.classList.add('hidden');
   noLinksEl.classList.add('hidden');
   errorEl.classList.add('hidden');
+  
+  // Hide manual analysis button in footer
+  if (manualAnalysisBtnAlt) {
+    manualAnalysisBtnAlt.classList.add('hidden');
+  }
 }
 
 // Event Listeners

@@ -30,9 +30,6 @@
         <div id="links-list" class="links-list">
           <!-- Links will be populated here -->
         </div>
-        <div class="manual-analysis-section">
-          <button id="manual-analysis-btn-alt" class="btn-manual">Analyze Policy Manually</button>
-        </div>
       </div>
 
       <!-- No Links Found -->
@@ -62,9 +59,12 @@
     </main>
 
     <!-- Footer -->
-    <footer class="footer">
-      <button id="refresh-btn" class="btn btn-secondary">Refresh Scan</button>
-      <button id="settings-btn" class="btn btn-secondary">Settings</button>
+    <footer class="footer" id="footer">
+      <div class="footer-row">
+        <button id="refresh-btn" class="btn btn-secondary">Refresh Scan</button>
+        <button id="settings-btn" class="btn btn-secondary">Settings</button>
+      </div>
+      <button id="manual-analysis-btn-alt" class="btn btn-primary btn-full-width hidden">Analyze Policy Manually</button>
     </footer>
   </div>
 
