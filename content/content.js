@@ -241,34 +241,6 @@ function analyzePolicy(policyUrl, policyTitle) {
   window.open(analysisUrl, '_blank');
 }
 
-// Show notification to user
-function showNotification(message, type = 'info') {
-  // Create notification element
-  const notification = document.createElement('div');
-  notification.className = `policypeek-notification policypeek-notification-${type}`;
-  notification.textContent = message;
-  
-  document.body.appendChild(notification);
-  
-  // Show notification
-  setTimeout(() => {
-    notification.classList.add('show');
-  }, 10);
-  
-  // Auto-hide after 3 seconds (unless loading)
-  if (type !== 'loading') {
-    setTimeout(() => {
-      notification.classList.remove('show');
-      setTimeout(() => {
-        notification.remove();
-      }, 300);
-    }, 3000);
-  } else {
-    // Store reference to remove later
-    notification.dataset.loading = 'true';
-  }
-}
-
 // Set up message listener for communication with popup
 function setupMessageListener() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

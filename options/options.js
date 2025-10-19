@@ -3,7 +3,6 @@
 console.log('PolicyPeek options page loaded');
 
 // DOM Elements
-const notificationsEnabled = document.getElementById('notifications-enabled');
 const autoScan = document.getElementById('auto-scan');
 const saveBtn = document.getElementById('save-btn');
 
@@ -17,11 +16,9 @@ async function init() {
 async function loadSettings() {
   try {
     const settings = await chrome.storage.local.get({
-      notificationsEnabled: true,
       autoScan: true
     });
     
-    notificationsEnabled.checked = settings.notificationsEnabled;
     autoScan.checked = settings.autoScan;
     
   } catch (error) {
@@ -38,7 +35,6 @@ function setupEventListeners() {
 async function saveSettings() {
   try {
     const settings = {
-      notificationsEnabled: notificationsEnabled.checked,
       autoScan: autoScan.checked
     };
     

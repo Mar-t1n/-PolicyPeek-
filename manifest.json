@@ -33,8 +33,7 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "storage",
-    "notifications"
+    "storage"
   ],
   "host_permissions": [
     "<all_urls>"
