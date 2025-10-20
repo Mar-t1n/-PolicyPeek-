@@ -3,7 +3,122 @@
 
 console.log('PolicyPeek analysis page loaded');
 
-// DOM Elements
+// Chrome AI Summarizer API state
+let summarizerInstance = null;
+let summarizerAvailable = false;
+
+// Initialize Chrome AI Summarizer API
+async function initializeSummarizer() {
+  try {
+    // Check if Summarizer API is available
+    if (!('Summarizer' in self)) {
+      console.warn('Chrome AI Summarizer API is not available in this browser');
+      console.log('Make sure you are using Chrome 138+ and have enabled AI features');
+      summarizerAvailable = false;
+      return false;
+    }
+
+    console.log('Summarizer API detected, checking availability...');
+    const availability = await self.Summarizer.availability();
+    console.log('Summarizer availability:', availability);
+
+    if (availability === 'no') {
+      console.warn('Summarizer API is not available on this device');
+      summarizerAvailable = false;
+      return false;
+    }
+
+    if (availability === 'after-download') {
+      console.log('Summarizer model needs to be downloaded first...');
+      // Show download progress to user
+      showSummarizerDownload();
+    }
+
+    // Create summarizer instance with options for privacy policies
+    const options = {
+      sharedContext: 'This is a privacy policy or terms of service document',
+      type: 'key-points',
+      format: 'markdown',
+      length: 'medium',
+      outputLanguage: 'en', // Specify output language to avoid warning
+      monitor(m) {
+        m.addEventListener('downloadprogress', (e) => {
+          const progress = Math.round(e.loaded * 100);
+          console.log(`Summarizer model download progress: ${progress}%`);
+          updateDownloadProgress(progress);
+        });
+      }
+    };
+
+    console.log('Creating Summarizer instance with options:', options);
+    summarizerInstance = await self.Summarizer.create(options);
+
+    summarizerAvailable = true;
+    console.log('✅ Summarizer initialized successfully!');
+    return true;
+
+  } catch (error) {
+    console.error('❌ Error initializing Summarizer:', error);
+    console.error('Error details:', error.message, error.stack);
+    summarizerAvailable = false;
+    return false;
+  }
+}
+
+// Show summarizer download UI
+function showSummarizerDownload() {
+  const loadingText = document.querySelector('#loading-section p');
+  if (loadingText) {
+    loadingText.innerHTML = `
+      <strong>Downloading AI model...</strong><br>
+      <span id="download-progress">Preparing download...</span>
+    `;
+  }
+}
+
+// Update download progress UI
+function updateDownloadProgress(progress) {
+  const progressElement = document.getElementById('download-progress');
+  if (progressElement) {
+    progressElement.textContent = `Download progress: ${progress}%`;
+  }
+}
+
+// Get optimal summary length based on text size
+function getSummaryLength(textLength) {
+  if (textLength < 3000) {
+    return 'short';
+  } else if (textLength < 8000) {
+    return 'medium';
+  } else {
+    return 'long';
+  }
+}
+
+// Truncate text if it exceeds the API limit
+function truncateTextForSummarizer(text, maxChars = 4000) {
+  if (text.length <= maxChars) {
+    return text;
+  }
+  
+  console.log(`Text is ${text.length} chars, truncating to ${maxChars} chars for summarization`);
+  
+  // Try to truncate at a sentence boundary
+  const truncated = text.substring(0, maxChars);
+  const lastPeriod = truncated.lastIndexOf('.');
+  const lastNewline = truncated.lastIndexOf('\n');
+  
+  const cutoff = Math.max(lastPeriod, lastNewline);
+  
+  if (cutoff > maxChars * 0.8) {
+    // Found a good cutoff point
+    return truncated.substring(0, cutoff + 1);
+  }
+  
+  // Just hard truncate
+  return truncated + '...';
+}
+
 const inputSection = document.getElementById('input-section');
 const resultsSection = document.getElementById('results-section');
 const loadingSection = document.getElementById('loading-section');
@@ -17,9 +132,14 @@ const resultsContent = document.getElementById('results-content');
 let isAnalyzing = false;
 
 // Initialize page
-function init() {
+async function init() {
   console.log('Initializing analysis page...');
   setupEventListeners();
+  
+  // Initialize Chrome AI Summarizer in the background
+  initializeSummarizer().catch(err => {
+    console.error('Failed to initialize Summarizer:', err);
+  });
   
   // Check for URL parameters (auto-analysis from popup)
   const urlParams = new URLSearchParams(window.location.search);
@@ -82,9 +202,8 @@ async function handleAnalyze() {
   showLoading();
   
   try {
-    // This will be implemented in Phase 4
-    // For now, simulate analysis
-    await simulateAnalysis(text);
+    // Perform AI-powered analysis
+    await analyzePolicy(text);
     
   } catch (error) {
     console.error('Analysis error:', error);
@@ -94,19 +213,106 @@ async function handleAnalyze() {
   }
 }
 
-// Simulate analysis (placeholder for Phase 4 implementation)
-async function simulateAnalysis(text) {
-  console.log('Simulating analysis for', text.length, 'characters');
+// Analyze policy text with Chrome AI Summarizer
+async function analyzePolicy(text) {
+  console.log('Analyzing policy text:', text.length, 'characters');
   
-  // Simulate processing time
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  let summary = null;
+  let usedAI = false;
+  let wasTruncated = false;
   
-  // Show placeholder results
+  // Try to use Chrome AI Summarizer if available
+  if (summarizerAvailable && summarizerInstance) {
+    try {
+      console.log('Using Chrome AI Summarizer...');
+      console.log('Summarizer instance:', summarizerInstance);
+      
+      // Truncate text if too large (Summarizer has limits around 4000 chars)
+      let textToSummarize = text;
+      if (text.length > 4000) {
+        textToSummarize = truncateTextForSummarizer(text, 4000);
+        wasTruncated = true;
+        console.log(`⚠️ Text truncated from ${text.length} to ${textToSummarize.length} characters`);
+      }
+      
+      // Use batch summarization with proper language specification
+      const summarizeOptions = {
+        context: 'This document is a privacy policy or terms of service intended for general users.',
+        outputLanguage: 'en'
+      };
+      
+      console.log('Calling summarize() with options:', summarizeOptions);
+      summary = await summarizerInstance.summarize(textToSummarize, summarizeOptions);
+      
+      // Add truncation notice if text was cut
+      if (wasTruncated) {
+        summary = `*Note: This policy was very long (${text.length.toLocaleString()} characters), so only the first section was summarized.*\n\n` + summary;
+      }
+      
+      usedAI = true;
+      console.log('✅ AI Summary generated successfully');
+      console.log('Summary preview:', summary.substring(0, 200));
+      
+    } catch (error) {
+      console.error('❌ AI Summarization failed:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      console.log('Falling back to basic analysis...');
+      summary = null;
+      usedAI = false;
+    }
+  } else {
+    console.log('Chrome AI Summarizer not available');
+    console.log('summarizerAvailable:', summarizerAvailable);
+    console.log('summarizerInstance:', summarizerInstance);
+  }
+  
+  // If AI failed or unavailable, create basic summary
+  if (!summary) {
+    console.log('Creating basic summary...');
+    summary = createBasicSummary(text);
+  }
+  
+  // Show results
   showResults({
-    summary: 'Analysis functionality will be implemented in Phase 4',
+    summary: summary,
     wordCount: text.split(/\s+/).length,
-    characterCount: text.length
+    characterCount: text.length,
+    fullText: text,
+    usedAI: usedAI
   });
+}
+
+// Create basic summary without AI (fallback)
+function createBasicSummary(text) {
+  const wordCount = text.split(/\s+/).length;
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  
+  let summary = '**Basic Analysis:**\n\n';
+  summary += `- Document contains ${wordCount} words across ${sentences.length} sentences\n`;
+  summary += `- Average sentence length: ${Math.round(wordCount / sentences.length)} words\n`;
+  
+  // Look for common privacy policy keywords
+  const keywords = {
+    'data collection': /collect|gathering|obtain/gi,
+    'personal information': /personal\s+information|personal\s+data/gi,
+    'cookies': /cookie/gi,
+    'third party': /third[\s-]party/gi,
+    'sharing': /share|sharing|disclose/gi,
+    'rights': /rights|access|delete|opt[\s-]out/gi
+  };
+  
+  summary += '\n**Key Topics Detected:**\n';
+  for (const [topic, pattern] of Object.entries(keywords)) {
+    const matches = text.match(pattern);
+    if (matches && matches.length > 0) {
+      summary += `- ${topic.charAt(0).toUpperCase() + topic.slice(1)}: mentioned ${matches.length} time(s)\n`;
+    }
+  }
+  
+  summary += '\n*Note: Chrome AI Summarizer is not available. Install Chrome 138+ for AI-powered summaries.*';
+  
+  return summary;
 }
 
 // Analyze from URL (when clicking "Analyze" button in popup)
@@ -140,15 +346,18 @@ async function analyzeFromUrl(url, title = 'Policy Document') {
     
     console.log('Received policy content:', response.content.length, 'characters');
     
-    // Display the fetched content
-    showResults({
-      title: response.title,
-      url: response.url,
-      summary: 'Policy content fetched successfully!',
-      wordCount: response.content.split(/\s+/).length,
-      characterCount: response.content.length,
-      fullText: response.content
-    });
+    // Analyze the fetched content with AI
+    await analyzePolicy(response.content);
+    
+    // Note: The results will be shown by analyzePolicy function
+    // but we can add the URL and title info
+    const currentResults = resultsContent.innerHTML;
+    resultsContent.innerHTML = `
+      <div style="padding: 20px; background: #e3f2fd; border-radius: 6px; margin-bottom: 20px;">
+        <p><strong>Policy:</strong> ${response.title}</p>
+        <p><strong>URL:</strong> <a href="${response.url}" target="_blank" style="color: #1976d2;">${response.url}</a></p>
+      </div>
+    ` + currentResults;
     
   } catch (error) {
     console.error('Error analyzing from URL:', error);
@@ -183,23 +392,34 @@ function showResults(data) {
   resultsSection.classList.remove('hidden');
   
   // Build results HTML
-  let html = `
+  let html = '';
+  
+  // AI status badge
+  if (data.usedAI !== undefined) {
+    const badgeColor = data.usedAI ? '#4caf50' : '#ff9800';
+    const badgeText = data.usedAI ? '✓ AI-Powered Analysis' : '⚠ Basic Analysis';
+    html += `
+      <div style="display: inline-block; padding: 6px 12px; background: ${badgeColor}; color: white; border-radius: 4px; margin-bottom: 16px; font-size: 13px; font-weight: 600;">
+        ${badgeText}
+      </div>
+    `;
+  }
+  
+  // Summary section
+  html += `
     <div style="padding: 20px; background: #f5f5f5; border-radius: 6px; margin-bottom: 20px;">
-      <h3 style="margin-bottom: 12px;">Analysis Complete</h3>
+      <h3 style="margin: 0 0 16px 0; color: #1a1a1a;">Summary</h3>
+      <div style="line-height: 1.8; color: #333;">${formatSummary(data.summary)}</div>
+    </div>
   `;
   
-  if (data.title) {
-    html += `<p><strong>Policy:</strong> ${data.title}</p>`;
-  }
-  
-  if (data.url) {
-    html += `<p><strong>URL:</strong> <a href="${data.url}" target="_blank" style="color: #1a1a1a;">${data.url}</a></p>`;
-  }
-  
+  // Statistics section
   html += `
-      <p><strong>Word Count:</strong> ${data.wordCount.toLocaleString()}</p>
-      <p><strong>Character Count:</strong> ${data.characterCount.toLocaleString()}</p>
-      <p style="margin-top: 16px; color: #666;">${data.summary}</p>
+    <div style="padding: 20px; background: white; border: 1px solid #e5e5e5; border-radius: 6px; margin-bottom: 20px;">
+      <h3 style="margin: 0 0 12px 0; color: #1a1a1a;">Statistics</h3>
+      <p style="margin: 8px 0;"><strong>Word Count:</strong> ${data.wordCount.toLocaleString()}</p>
+      <p style="margin: 8px 0;"><strong>Character Count:</strong> ${data.characterCount.toLocaleString()}</p>
+      <p style="margin: 8px 0;"><strong>Estimated Reading Time:</strong> ${Math.ceil(data.wordCount / 200)} minutes</p>
     </div>
   `;
   
@@ -207,13 +427,44 @@ function showResults(data) {
   if (data.fullText) {
     html += `
       <div style="padding: 20px; background: white; border: 1px solid #e5e5e5; border-radius: 6px;">
-        <h4 style="margin-bottom: 12px;">Policy Text Preview (first 2000 characters)</h4>
-        <pre style="white-space: pre-wrap; word-wrap: break-word; font-size: 12px; line-height: 1.5; color: #333; max-height: 400px; overflow-y: auto;">${data.fullText.substring(0, 2000)}${data.fullText.length > 2000 ? '...\n\n[Content truncated]' : ''}</pre>
+        <h4 style="margin: 0 0 12px 0; color: #1a1a1a;">Full Policy Text</h4>
+        <details>
+          <summary style="cursor: pointer; color: #1976d2; font-weight: 600; margin-bottom: 12px;">Click to show/hide full text</summary>
+          <pre style="white-space: pre-wrap; word-wrap: break-word; font-size: 12px; line-height: 1.6; color: #333; max-height: 500px; overflow-y: auto; background: #fafafa; padding: 16px; border-radius: 4px; margin-top: 12px;">${escapeHtml(data.fullText)}</pre>
+        </details>
       </div>
     `;
   }
   
   resultsContent.innerHTML = html;
+}
+
+// Format summary text (convert markdown to HTML)
+function formatSummary(text) {
+  if (!text) return '';
+  
+  // Convert markdown-style formatting to HTML
+  let formatted = text
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Bullet points
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    // Line breaks
+    .replace(/\n/g, '<br>');
+  
+  // Wrap list items in ul tags
+  if (formatted.includes('<li>')) {
+    formatted = formatted.replace(/(<li>.*<\/li>)/s, '<ul style="margin: 12px 0; padding-left: 24px;">$1</ul>');
+  }
+  
+  return formatted;
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Show error
