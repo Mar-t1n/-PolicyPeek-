@@ -3,70 +3,66 @@
 
 console.log('PolicyPeek analysis page loaded');
 
-// Chrome AI Summarizer API state
-let summarizerInstance = null;
-let summarizerAvailable = false;
+// Chrome AI Prompt API state
+let promptSession = null;
+let promptAvailable = false;
 
-// Initialize Chrome AI Summarizer API
-async function initializeSummarizer() {
+// Initialize Chrome AI Prompt API
+async function initializePromptAPI() {
   try {
-    // Check if Summarizer API is available
-    if (!('Summarizer' in self)) {
-      console.warn('Chrome AI Summarizer API is not available in this browser');
+    // Check if Prompt API is available
+    if (!('LanguageModel' in self)) {
+      console.warn('Chrome AI Prompt API is not available in this browser');
       console.log('Make sure you are using Chrome 138+ and have enabled AI features');
-      summarizerAvailable = false;
+      promptAvailable = false;
       return false;
     }
 
-    console.log('Summarizer API detected, checking availability...');
-    const availability = await self.Summarizer.availability();
-    console.log('Summarizer availability:', availability);
+    console.log('Prompt API detected, checking availability...');
+    const availability = await self.LanguageModel.availability();
+    console.log('Prompt API availability:', availability);
 
-    if (availability === 'no') {
-      console.warn('Summarizer API is not available on this device');
-      summarizerAvailable = false;
+    if (availability === 'no' || availability === 'unavailable') {
+      console.warn('Prompt API is not available on this device');
+      promptAvailable = false;
       return false;
     }
 
-    if (availability === 'after-download') {
-      console.log('Summarizer model needs to be downloaded first...');
+    if (availability === 'after-download' || availability === 'downloading' || availability === 'downloadable') {
+      console.log('Gemini Nano model needs to be downloaded first...');
       // Show download progress to user
-      showSummarizerDownload();
+      showModelDownload();
     }
 
-    // Create summarizer instance with options for privacy policies
-    const options = {
-      sharedContext: 'This is a privacy policy or terms of service document',
-      type: 'key-points',
-      format: 'markdown',
-      length: 'medium',
-      outputLanguage: 'en', // Specify output language to avoid warning
+    // Create prompt session with simple default options
+    console.log('Creating Prompt API session...');
+    
+    // Use minimal options - let Chrome use its own defaults
+    promptSession = await self.LanguageModel.create({
+      systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading.',
       monitor(m) {
         m.addEventListener('downloadprogress', (e) => {
           const progress = Math.round(e.loaded * 100);
-          console.log(`Summarizer model download progress: ${progress}%`);
+          console.log(`Gemini Nano model download progress: ${progress}%`);
           updateDownloadProgress(progress);
         });
       }
-    };
+    });
 
-    console.log('Creating Summarizer instance with options:', options);
-    summarizerInstance = await self.Summarizer.create(options);
-
-    summarizerAvailable = true;
-    console.log('✅ Summarizer initialized successfully!');
+    promptAvailable = true;
+    console.log('✅ Prompt API initialized successfully!');
     return true;
 
   } catch (error) {
-    console.error('❌ Error initializing Summarizer:', error);
+    console.error('❌ Error initializing Prompt API:', error);
     console.error('Error details:', error.message, error.stack);
-    summarizerAvailable = false;
+    promptAvailable = false;
     return false;
   }
 }
 
-// Show summarizer download UI
-function showSummarizerDownload() {
+// Show model download UI
+function showModelDownload() {
   const loadingText = document.querySelector('#loading-section p');
   if (loadingText) {
     loadingText.innerHTML = `
@@ -84,24 +80,13 @@ function updateDownloadProgress(progress) {
   }
 }
 
-// Get optimal summary length based on text size
-function getSummaryLength(textLength) {
-  if (textLength < 3000) {
-    return 'short';
-  } else if (textLength < 8000) {
-    return 'medium';
-  } else {
-    return 'long';
-  }
-}
-
-// Truncate text if it exceeds the API limit
-function truncateTextForSummarizer(text, maxChars = 4000) {
+// Truncate text if it exceeds reasonable limits
+function truncateTextForPrompt(text, maxChars = 8000) {
   if (text.length <= maxChars) {
     return text;
   }
   
-  console.log(`Text is ${text.length} chars, truncating to ${maxChars} chars for summarization`);
+  console.log(`Text is ${text.length} chars, truncating to ${maxChars} chars for analysis`);
   
   // Try to truncate at a sentence boundary
   const truncated = text.substring(0, maxChars);
@@ -136,20 +121,30 @@ async function init() {
   console.log('Initializing analysis page...');
   setupEventListeners();
   
-  // Initialize Chrome AI Summarizer in the background
-  initializeSummarizer().catch(err => {
-    console.error('Failed to initialize Summarizer:', err);
-  });
-  
   // Check for URL parameters (auto-analysis from popup)
   const urlParams = new URLSearchParams(window.location.search);
   const policyUrl = urlParams.get('url');
   const policyTitle = urlParams.get('title');
   
   if (policyUrl) {
-    // Auto-analyze from URL
+    // Show loading immediately for URL analysis
+    showLoading();
+    
+    // Initialize Chrome AI Prompt API and WAIT for it
+    console.log('URL analysis requested - initializing AI first...');
+    await initializePromptAPI().catch(err => {
+      console.error('Failed to initialize Prompt API:', err);
+    });
+    console.log('AI initialization complete, proceeding with analysis...');
+    
+    // Now analyze from URL with AI ready
     analyzeFromUrl(policyUrl, policyTitle);
   } else {
+    // Initialize Chrome AI Prompt API in the background for manual input
+    initializePromptAPI().catch(err => {
+      console.error('Failed to initialize Prompt API:', err);
+    });
+    
     // Check for saved manual input
     checkForSavedInput();
   }
@@ -202,6 +197,14 @@ async function handleAnalyze() {
   showLoading();
   
   try {
+    // Ensure AI is initialized if not already
+    if (!promptAvailable && !promptSession) {
+      console.log('AI not yet initialized, initializing now...');
+      await initializePromptAPI().catch(err => {
+        console.error('Failed to initialize Prompt API:', err);
+      });
+    }
+    
     // Perform AI-powered analysis
     await analyzePolicy(text);
     
@@ -213,7 +216,7 @@ async function handleAnalyze() {
   }
 }
 
-// Analyze policy text with Chrome AI Summarizer
+// Analyze policy text with Chrome AI Prompt API
 async function analyzePolicy(text) {
   console.log('Analyzing policy text:', text.length, 'characters');
   
@@ -221,40 +224,53 @@ async function analyzePolicy(text) {
   let usedAI = false;
   let wasTruncated = false;
   
-  // Try to use Chrome AI Summarizer if available
-  if (summarizerAvailable && summarizerInstance) {
+  // Try to use Chrome AI Prompt API if available
+  if (promptAvailable && promptSession) {
     try {
-      console.log('Using Chrome AI Summarizer...');
-      console.log('Summarizer instance:', summarizerInstance);
+      console.log('Using Chrome AI Prompt API...');
+      console.log('Prompt session:', promptSession);
       
-      // Truncate text if too large (Summarizer has limits around 4000 chars)
-      let textToSummarize = text;
-      if (text.length > 4000) {
-        textToSummarize = truncateTextForSummarizer(text, 4000);
+      // Truncate text if too large (be reasonable with prompt length)
+      let textToAnalyze = text;
+      if (text.length > 8000) {
+        textToAnalyze = truncateTextForPrompt(text, 8000);
         wasTruncated = true;
-        console.log(`⚠️ Text truncated from ${text.length} to ${textToSummarize.length} characters`);
+        console.log(`⚠️ Text truncated from ${text.length} to ${textToAnalyze.length} characters`);
       }
       
-      // Use batch summarization with proper language specification
-      const summarizeOptions = {
-        context: 'This document is a privacy policy or terms of service intended for general users.',
-        outputLanguage: 'en'
-      };
+      // Create a detailed prompt for policy analysis
+      const prompt = `Please analyze this privacy policy or terms of service document and provide:
+
+1. **Key Points**: The most important things users should know
+2. **Data Collection**: What personal data is collected
+3. **Data Usage**: How the data is used
+4. **Third-Party Sharing**: If and how data is shared with others
+5. **User Rights**: What rights users have regarding their data
+6. **Notable Concerns**: Any concerning or unusual terms
+
+Keep the summary clear and concise. Use bullet points for readability.
+
+Document to analyze:
+${textToAnalyze}`;
       
-      console.log('Calling summarize() with options:', summarizeOptions);
-      summary = await summarizerInstance.summarize(textToSummarize, summarizeOptions);
+      console.log('Sending prompt to AI...');
+      
+      // Use prompt() for complete response with language specification
+      summary = await promptSession.prompt(prompt, {
+        outputLanguage: 'en'  // Specify output language to avoid warnings
+      });
       
       // Add truncation notice if text was cut
       if (wasTruncated) {
-        summary = `*Note: This policy was very long (${text.length.toLocaleString()} characters), so only the first section was summarized.*\n\n` + summary;
+        summary = `*Note: This policy was very long (${text.length.toLocaleString()} characters), so only the first section was analyzed.*\n\n` + summary;
       }
       
       usedAI = true;
-      console.log('✅ AI Summary generated successfully');
+      console.log('✅ AI Analysis generated successfully');
       console.log('Summary preview:', summary.substring(0, 200));
       
     } catch (error) {
-      console.error('❌ AI Summarization failed:', error);
+      console.error('❌ AI Analysis failed:', error);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
       console.log('Falling back to basic analysis...');
@@ -262,9 +278,9 @@ async function analyzePolicy(text) {
       usedAI = false;
     }
   } else {
-    console.log('Chrome AI Summarizer not available');
-    console.log('summarizerAvailable:', summarizerAvailable);
-    console.log('summarizerInstance:', summarizerInstance);
+    console.log('Chrome AI Prompt API not available');
+    console.log('promptAvailable:', promptAvailable);
+    console.log('promptSession:', promptSession);
   }
   
   // If AI failed or unavailable, create basic summary
@@ -310,7 +326,7 @@ function createBasicSummary(text) {
     }
   }
   
-  summary += '\n*Note: Chrome AI Summarizer is not available. Install Chrome 138+ for AI-powered summaries.*';
+  summary += '\n*Note: Chrome AI Prompt API is not available. Install Chrome 138+ for AI-powered analysis.*';
   
   return summary;
 }

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "PolicyPeek",
   "version": "1.0.0",
-  "description": "Automatically detect and analyze privacy policies, terms of service, and legal documents using Chrome's Built-in AI",
+  "description": "Automatically detect and analyze privacy policies, terms of service, and legal documents using Chrome's Built-in AI (Prompt API)",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -35,6 +35,9 @@
     "scripting",
     "storage",
     "notifications"
+  ],
+  "trial_tokens": [
+    "ArKulIMG/UIHotSMRxL/gy8hUgz0B+bpu19/snLGYtcdzp5PVsQmMQ4tnKXUPyoOLRB49/zaMXMy6XSPL6f1JgYAAAB7eyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vbmNvbW1kbmJuam5sYmNhYWhsbmxkZ2loa2FkY2dtb2oiLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElNdWx0aW1vZGFsSW5wdXQiLCJleHBpcnkiOjE3NzQzMTA0MDB9"
   ],
   "host_permissions": [
     "<all_urls>"
