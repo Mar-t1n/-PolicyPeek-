@@ -14,11 +14,45 @@
         <img src="../icons/icon48.png" alt="PolicyPeek" class="logo-icon">
         <h1>PolicyPeek</h1>
       </div>
-      <p class="subtitle">Manual Policy Analysis</p>
+      <p class="subtitle">Policy Analysis</p>
     </header>
 
     <!-- Main Content -->
     <main class="content">
+      <!-- AI Download Prompt Section -->
+      <section id="download-prompt-section" class="download-prompt-section hidden">
+        <div class="download-prompt-card">
+          <div class="download-icon">
+            <img src="../icons/gemini.png" alt="Gemini Nano AI" style="width: 80px; height: auto;">
+          </div>
+          <h2>AI Model Download Available</h2>
+          <p class="download-description">
+            PolicyPeek uses Chrome's built-in AI (Gemini Nano) to provide intelligent analysis of privacy policies.
+          </p>
+          <p class="download-warning">
+            <strong>AI features of this extension won't work without this</strong>
+          </p>
+          <p class="download-details">
+            Download size: ~1.7 GB (one-time download)<br>
+            The model will be stored locally on your device.
+          </p>
+          <div class="actions">
+            <button id="download-model-btn" class="btn btn-primary btn-large">
+              Download AI Model
+            </button>
+            <div class="skip-container">
+              <button id="skip-download-btn" class="btn btn-secondary">
+                Skip
+              </button>
+              <span class="skip-warning">
+                Limited features
+                <span class="tooltip">AI features won't work without this. Uses basic analysis only.</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Input Section -->
       <section id="input-section" class="input-section">
         <h2>Paste Policy Text</h2>

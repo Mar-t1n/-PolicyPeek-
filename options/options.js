@@ -5,6 +5,7 @@ console.log('PolicyPeek options page loaded');
 // DOM Elements
 const notificationsEnabled = document.getElementById('notifications-enabled');
 const autoScan = document.getElementById('auto-scan');
+const showMagnifyingGlass = document.getElementById('show-magnifying-glass');
 const saveBtn = document.getElementById('save-btn');
 
 // Initialize
@@ -18,11 +19,13 @@ async function loadSettings() {
   try {
     const settings = await chrome.storage.local.get({
       notificationsEnabled: true,
-      autoScan: true
+      autoScan: true,
+      showMagnifyingGlass: true
     });
     
     notificationsEnabled.checked = settings.notificationsEnabled;
     autoScan.checked = settings.autoScan;
+    showMagnifyingGlass.checked = settings.showMagnifyingGlass;
     
   } catch (error) {
     console.error('Error loading settings:', error);
@@ -39,7 +42,8 @@ async function saveSettings() {
   try {
     const settings = {
       notificationsEnabled: notificationsEnabled.checked,
-      autoScan: autoScan.checked
+      autoScan: autoScan.checked,
+      showMagnifyingGlass: showMagnifyingGlass.checked
     };
     
     await chrome.storage.local.set(settings);

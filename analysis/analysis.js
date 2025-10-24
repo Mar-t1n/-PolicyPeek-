@@ -22,20 +22,36 @@ async function initializePromptAPI() {
     const availability = await self.LanguageModel.availability();
     console.log('Prompt API availability:', availability);
 
+    // If model is not available at all
     if (availability === 'no' || availability === 'unavailable') {
       console.warn('Prompt API is not available on this device');
       promptAvailable = false;
       return false;
     }
 
-    if (availability === 'after-download' || availability === 'downloading' || availability === 'downloadable') {
-      console.log('Gemini Nano model needs to be downloaded first...');
-      // Show download progress to user
+    // If model is currently downloading, wait
+    if (availability === 'downloading') {
+      console.log('Gemini Nano model is currently downloading...');
       showModelDownload();
+      promptAvailable = false;
+      return false;
+    }
+    
+    // If model needs download, show download prompt (unless user skipped)
+    if ((availability === 'downloadable' || availability === 'after-download') && !userSkippedDownload) {
+      console.log('Model needs download - showing download prompt to user');
+      promptAvailable = false;
+      return 'needs-download'; // Special return value
     }
 
-    // Create prompt session with simple default options
+    // Try to create session for 'readily' state or if user skipped/initiated download
     console.log('Creating Prompt API session...');
+    
+    if (availability === 'downloadable' || availability === 'after-download') {
+      console.log('Note: User skipped download - will use without AI');
+      promptAvailable = false;
+      return false;
+    }
     
     // Use minimal options - let Chrome use its own defaults
     promptSession = await self.LanguageModel.create({
@@ -56,6 +72,14 @@ async function initializePromptAPI() {
   } catch (error) {
     console.error('❌ Error initializing Prompt API:', error);
     console.error('Error details:', error.message, error.stack);
+    
+    // Check if it's a gesture error
+    if (error.message && error.message.includes('gesture')) {
+      console.log('⚠️ Model download requires user gesture - will retry on user action');
+      // Don't set promptAvailable = false yet, we'll retry later
+      return false;
+    }
+    
     promptAvailable = false;
     return false;
   }
@@ -67,7 +91,8 @@ function showModelDownload() {
   if (loadingText) {
     loadingText.innerHTML = `
       <strong>Downloading AI model...</strong><br>
-      <span id="download-progress">Preparing download...</span>
+      <span id="download-progress">Preparing download...</span><br>
+      <small style="color: #666; margin-top: 8px; display: block;">This is a one-time download of the Gemini Nano model (~1.7 GB)</small>
     `;
   }
 }
@@ -107,14 +132,18 @@ function truncateTextForPrompt(text, maxChars = 8000) {
 const inputSection = document.getElementById('input-section');
 const resultsSection = document.getElementById('results-section');
 const loadingSection = document.getElementById('loading-section');
+const downloadPromptSection = document.getElementById('download-prompt-section');
 const policyInput = document.getElementById('policy-input');
 const analyzeBtn = document.getElementById('analyze-btn');
 const clearBtn = document.getElementById('clear-btn');
 const newAnalysisBtn = document.getElementById('new-analysis-btn');
+const downloadModelBtn = document.getElementById('download-model-btn');
+const skipDownloadBtn = document.getElementById('skip-download-btn');
 const resultsContent = document.getElementById('results-content');
 
 // State
 let isAnalyzing = false;
+let userSkippedDownload = false;
 
 // Initialize page
 async function init() {
@@ -132,18 +161,41 @@ async function init() {
     
     // Initialize Chrome AI Prompt API and WAIT for it
     console.log('URL analysis requested - initializing AI first...');
-    await initializePromptAPI().catch(err => {
+    const initResult = await initializePromptAPI().catch(err => {
       console.error('Failed to initialize Prompt API:', err);
+      return false;
     });
+    
+    // If model needs download, show prompt
+    if (initResult === 'needs-download') {
+      hideAll();
+      downloadPromptSection.classList.remove('hidden');
+      // Store the URL for later use
+      window.pendingAnalysis = { url: policyUrl, title: policyTitle };
+      return;
+    }
+    
     console.log('AI initialization complete, proceeding with analysis...');
     
     // Now analyze from URL with AI ready
     analyzeFromUrl(policyUrl, policyTitle);
   } else {
     // Initialize Chrome AI Prompt API in the background for manual input
-    initializePromptAPI().catch(err => {
+    const initResult = await initializePromptAPI().catch(err => {
       console.error('Failed to initialize Prompt API:', err);
+      return false;
     });
+    
+    // If model needs download, show prompt
+    if (initResult === 'needs-download') {
+      hideAll();
+      downloadPromptSection.classList.remove('hidden');
+      return;
+    }
+    
+    // Show input section for manual analysis
+    hideAll();
+    inputSection.classList.remove('hidden');
     
     // Check for saved manual input
     checkForSavedInput();
@@ -155,6 +207,8 @@ function setupEventListeners() {
   analyzeBtn.addEventListener('click', handleAnalyze);
   clearBtn.addEventListener('click', handleClear);
   newAnalysisBtn.addEventListener('click', handleNewAnalysis);
+  downloadModelBtn.addEventListener('click', handleDownloadModel);
+  skipDownloadBtn.addEventListener('click', handleSkipDownload);
   
   // Enable/disable analyze button based on input
   policyInput.addEventListener('input', () => {
@@ -197,12 +251,40 @@ async function handleAnalyze() {
   showLoading();
   
   try {
-    // Ensure AI is initialized if not already
+    // Ensure AI is initialized if not already (or try to create session with user gesture)
     if (!promptAvailable && !promptSession) {
-      console.log('AI not yet initialized, initializing now...');
-      await initializePromptAPI().catch(err => {
+      console.log('AI not yet initialized, attempting to initialize with user gesture...');
+      const initialized = await initializePromptAPI().catch(err => {
         console.error('Failed to initialize Prompt API:', err);
+        return false;
       });
+      
+      // If initialization still failed, try to create session manually (this has user gesture context)
+      if (!initialized && 'LanguageModel' in self) {
+        try {
+          const availability = await self.LanguageModel.availability();
+          console.log('Current availability status:', availability);
+          
+          if (availability === 'downloadable' || availability === 'after-download') {
+            console.log('Attempting to create session with user gesture to trigger download...');
+            promptSession = await self.LanguageModel.create({
+              systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading. try to make the length of your response as short as possible and if necessary create a section for risky parrts about the policy',
+              monitor(m) {
+                m.addEventListener('downloadprogress', (e) => {
+                  const progress = Math.round(e.loaded * 100);
+                  console.log(`Gemini Nano model download progress: ${progress}%`);
+                  updateDownloadProgress(progress);
+                  showModelDownload();
+                });
+              }
+            });
+            promptAvailable = true;
+            console.log('✅ Session created successfully, download may be in progress');
+          }
+        } catch (createError) {
+          console.error('Failed to create session with user gesture:', createError);
+        }
+      }
     }
     
     // Perform AI-powered analysis
@@ -287,6 +369,15 @@ ${textToAnalyze}`;
   if (!summary) {
     console.log('Creating basic summary...');
     summary = createBasicSummary(text);
+    
+    // Check if we might be able to enable AI with user action
+    if ('LanguageModel' in self) {
+      self.LanguageModel.availability().then(availability => {
+        if (availability === 'downloadable' || availability === 'after-download') {
+          console.log('💡 Hint: AI model is available but needs to be downloaded. Try the manual analysis page for AI-powered analysis.');
+        }
+      }).catch(err => console.log('Could not check availability:', err));
+    }
   }
   
   // Show results
@@ -326,7 +417,9 @@ function createBasicSummary(text) {
     }
   }
   
-  summary += '\n*Note: Chrome AI Prompt API is not available. Install Chrome 138+ for AI-powered analysis.*';
+  summary += '\n*Note: AI-powered analysis is not currently available. This may be because:*\n';
+  summary += '- *The Gemini Nano model needs to be downloaded (try manual analysis page)*\n';
+  summary += '- *Chrome AI is not enabled (requires Chrome 138+ with AI features enabled)*\n';
   
   return summary;
 }
@@ -362,6 +455,33 @@ async function analyzeFromUrl(url, title = 'Policy Document') {
     
     console.log('Received policy content:', response.content.length, 'characters');
     
+    // If AI wasn't initialized yet (gesture error), try again now
+    // The page load itself can sometimes count as a user gesture
+    if (!promptAvailable && !promptSession && 'LanguageModel' in self) {
+      console.log('Retrying AI initialization for URL analysis...');
+      try {
+        const availability = await self.LanguageModel.availability();
+        if (availability === 'downloadable' || availability === 'after-download' || availability === 'readily') {
+          console.log('Attempting to create session for URL analysis...');
+          promptSession = await self.LanguageModel.create({
+            systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading.',
+            monitor(m) {
+              m.addEventListener('downloadprogress', (e) => {
+                const progress = Math.round(e.loaded * 100);
+                console.log(`Gemini Nano model download progress: ${progress}%`);
+                updateDownloadProgress(progress);
+                showModelDownload();
+              });
+            }
+          });
+          promptAvailable = true;
+          console.log('✅ AI session created successfully for URL analysis');
+        }
+      } catch (retryError) {
+        console.log('Could not create AI session:', retryError.message);
+      }
+    }
+    
     // Analyze the fetched content with AI
     await analyzePolicy(response.content);
     
@@ -394,6 +514,83 @@ function handleNewAnalysis() {
   hideAll();
   inputSection.classList.remove('hidden');
   handleClear();
+}
+
+// Handle download model button click (USER GESTURE)
+async function handleDownloadModel() {
+  console.log('User clicked download button - attempting to create session with user gesture...');
+  downloadModelBtn.disabled = true;
+  downloadModelBtn.textContent = 'Downloading...';
+  
+  showLoading();
+  
+  try {
+    if (!('LanguageModel' in self)) {
+      throw new Error('Chrome AI is not available in this browser');
+    }
+    
+    const availability = await self.LanguageModel.availability();
+    console.log('Current availability:', availability);
+    
+    if (availability === 'readily') {
+      console.log('Model is already ready!');
+      promptAvailable = true;
+    } else {
+      // Create session with user gesture - this will trigger download
+      console.log('Creating session to trigger download...');
+      promptSession = await self.LanguageModel.create({
+        systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading.',
+        monitor(m) {
+          m.addEventListener('downloadprogress', (e) => {
+            const progress = Math.round(e.loaded * 100);
+            console.log(`Gemini Nano model download progress: ${progress}%`);
+            updateDownloadProgress(progress);
+          });
+        }
+      });
+      promptAvailable = true;
+      console.log('✅ Session created successfully!');
+    }
+    
+    // If there was a pending analysis from URL, continue it
+    if (window.pendingAnalysis) {
+      console.log('Continuing pending URL analysis...');
+      await analyzeFromUrl(window.pendingAnalysis.url, window.pendingAnalysis.title);
+      window.pendingAnalysis = null;
+    } else {
+      // Show input section for manual analysis
+      hideAll();
+      inputSection.classList.remove('hidden');
+      checkForSavedInput();
+    }
+    
+  } catch (error) {
+    console.error('Error downloading model:', error);
+    hideAll();
+    downloadPromptSection.classList.remove('hidden');
+    downloadModelBtn.disabled = false;
+    downloadModelBtn.textContent = 'Download AI Model';
+    alert('Failed to download AI model: ' + error.message + '\n\nYou can skip and use basic analysis instead.');
+  }
+}
+
+// Handle skip download button click
+function handleSkipDownload() {
+  console.log('User skipped AI model download');
+  userSkippedDownload = true;
+  promptAvailable = false;
+  
+  // If there was a pending analysis from URL, continue it without AI
+  if (window.pendingAnalysis) {
+    console.log('Continuing pending URL analysis without AI...');
+    analyzeFromUrl(window.pendingAnalysis.url, window.pendingAnalysis.title);
+    window.pendingAnalysis = null;
+  } else {
+    // Show input section for manual analysis
+    hideAll();
+    inputSection.classList.remove('hidden');
+    checkForSavedInput();
+  }
 }
 
 // Show loading state
@@ -495,6 +692,7 @@ function hideAll() {
   inputSection.classList.add('hidden');
   resultsSection.classList.add('hidden');
   loadingSection.classList.add('hidden');
+  downloadPromptSection.classList.add('hidden');
 }
 
 // Initialize when page loads

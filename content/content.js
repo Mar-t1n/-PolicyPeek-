@@ -32,13 +32,19 @@ let isScanning = false;
 let scanTimeout = null;
 let processedUrls = new Set();
 let activeTooltip = null;
+let settings = {
+  showMagnifyingGlass: true
+};
 
 // Initialize content script
 function init() {
   console.log('PolicyPeek: Initializing content script');
   
-  // Scan page for policy links
-  scanForPolicyLinks();
+  // Load settings first
+  loadSettings().then(() => {
+    // Scan page for policy links
+    scanForPolicyLinks();
+  });
   
   // Set up message listener for popup communication
   setupMessageListener();
@@ -48,6 +54,38 @@ function init() {
   
   // Listen for clicks outside tooltips to close them
   document.addEventListener('click', handleDocumentClick);
+  
+  // Listen for settings changes
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.showMagnifyingGlass) {
+      settings.showMagnifyingGlass = changes.showMagnifyingGlass.newValue;
+      updateNotifierVisibility();
+    }
+  });
+}
+
+// Load settings from storage
+async function loadSettings() {
+  try {
+    const stored = await chrome.storage.local.get({
+      showMagnifyingGlass: true
+    });
+    settings.showMagnifyingGlass = stored.showMagnifyingGlass;
+  } catch (error) {
+    console.error('Error loading settings:', error);
+  }
+}
+
+// Update visibility of all notifiers based on settings
+function updateNotifierVisibility() {
+  const notifiers = document.querySelectorAll('.policypeek-notifier');
+  notifiers.forEach(notifier => {
+    if (settings.showMagnifyingGlass) {
+      notifier.style.display = '';
+    } else {
+      notifier.style.display = 'none';
+    }
+  });
 }
 
 // Handle clicks outside tooltips to close them
@@ -163,6 +201,11 @@ function injectNotifier(linkElement) {
   notifier.setAttribute('aria-label', 'Review with PolicyPeek');
   notifier.innerHTML = '🔍';
   
+  // Hide if setting is disabled
+  if (!settings.showMagnifyingGlass) {
+    notifier.style.display = 'none';
+  }
+  
   // Add click handler
   notifier.addEventListener('click', (event) => {
     event.preventDefault();
@@ -173,11 +216,13 @@ function injectNotifier(linkElement) {
   // Insert notifier INSIDE the link at the end (so it stays with the link text)
   linkElement.appendChild(notifier);
   
-  // Add entrance animation
-  notifier.classList.add('animate');
-  setTimeout(() => {
-    notifier.classList.remove('animate');
-  }, 3000);
+  // Add entrance animation (only if visible)
+  if (settings.showMagnifyingGlass) {
+    notifier.classList.add('animate');
+    setTimeout(() => {
+      notifier.classList.remove('animate');
+    }, 3000);
+  }
 }
 
 // Handle notifier click - show tooltip with "Review with PolicyPeek"
