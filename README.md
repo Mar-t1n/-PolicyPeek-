@@ -1,116 +1,54 @@
-# PolicyPeek
+PolicyPeek
+Instantly understand privacy policies and terms of service with AI-powered analysis
 
-**A Chrome Extension for the Google Chrome Built-in AI Challenge 2025**
+PolicyPeek is a Chrome extension that automatically detects privacy policies, terms of service, and other legal documents on websites, then uses Chrome's Built-in AI (Gemini Nano) to provide clear, concise summaries that highlight what actually matters.
 
-## Overview
+🌟 Key Features
+🔍 Automatic Detection - Instantly identifies privacy policies, terms of service, cookie policies, and other legal documents on any webpage
+🤖 AI-Powered Analysis - Leverages Chrome's Built-in Gemini Nano model for intelligent, on-device analysis
+📊 Clear Summaries - Get easy-to-read bullet points covering:
+Key points you need to know
+What data is collected
+How your data is used
+Third-party sharing practices
+Your rights as a user
+Notable concerns or unusual terms
+⚡ Fast & Private - Analysis happens locally on your device using Chrome's AI—no data sent to external servers
+🎯 Manual Analysis - Paste any policy text for instant analysis
+🔔 Smart Notifications - Optional alerts when policy links are detected
+⚙️ Customizable - Toggle features like magnifying glass indicators on/off
+💡 Why PolicyPeek?
+Privacy policies and terms of service are notoriously long and difficult to understand. Most people click "Accept" without reading them. PolicyPeek solves this by:
 
-PolicyPeek automatically scans webpages to detect links to privacy policies, user agreements, cookie terms, and similar legal documents. It uses Chrome's Built-in AI APIs to simplify these policies, highlight potential risks and dangerous clauses, and help users understand what they're really agreeing to before accepting terms.
+Breaking down complex legal language into plain English
+Highlighting potential privacy concerns and hidden clauses
+Saving you time—no need to read hundreds of pages
+Helping you make informed decisions about your data
+🚀 How It Works
+Browse normally - PolicyPeek runs in the background
+Automatic detection - Sees a privacy policy link? PolicyPeek finds it
+One-click analysis - Click the magnifying glass icon or extension button
+Read the summary - Get a clear breakdown in seconds
+🏆 Built for Chrome AI Challenge 2025
+This extension showcases the power of Chrome's Built-in AI (Prompt API) by providing practical, real-world utility that protects user privacy while delivering intelligent analysis.
 
-## Features
-
-- 🔍 **Automatic Link Detection** - Scans pages for privacy policy and terms of service links
-- 🤖 **AI-Powered Analysis** - Uses Chrome's Built-in AI APIs to analyze policies
-- ⚠️ **Risk Highlighting** - Identifies threatening or dangerous clauses
-- 📝 **Plain Language Summaries** - Converts complex legal text into understandable explanations
-- 📋 **Manual Analysis** - Paste any policy text for analysis
-- 🔔 **Smart Notifications** - Get alerted when policy links are found
-
-## Chrome Built-in AI APIs Used
-
-- **Summarizer API** - Condenses lengthy policies into digestible summaries
-- **Prompt API** - Analyzes text for threatening clauses and researches company data breach history
-- **Writer API** - Generates user-friendly explanations of complex legal language
-- **Rewriter API** - Rephrases complex sentences when necessary
-
-## Installation
-
-### Development Mode
-
-1. Clone or download this repository
-2. Open Chrome and navigate to `chrome://extensions/`
-3. Enable "Developer mode" in the top right
-4. Click "Load unpacked"
-5. Select the `Policy-Peek V2` folder
-6. The extension is now installed and ready to use!
-
-### Using the Extension
-
-1. **Automatic Detection**: Browse any website, and PolicyPeek will automatically scan for policy links
-2. **View Links**: Click the PolicyPeek icon in the toolbar to see detected links
-3. **Analyze Policy**: Click on any detected link notifier to analyze the policy
-4. **Manual Analysis**: If no links are found, use the "Analyze Policy Manually" button to paste text directly
-
-## Project Structure
-
-```
-Policy-Peek V2/
-├── manifest.json           # Extension configuration
-├── icons/                  # Extension icons (16, 32, 48, 128)
-├── popup/                  # Popup interface
-│   ├── popup.html
-│   ├── popup.css
-│   └── popup.js
-├── content/                # Content script (runs on web pages)
-│   ├── content.js
-│   └── content.css
-├── background/             # Background service worker
-│   └── background.js
-├── analysis/               # Manual analysis page
-│   ├── analysis.html
-│   ├── analysis.css
-│   └── analysis.js
-├── options/                # Settings page
-│   ├── options.html
-│   ├── options.css
-│   └── options.js
-└── README.md
-```
-
-## Development Status
-
-### Phase 1: ✅ Project Setup & Manifest (Complete)
-- Manifest V3 configuration
-- Folder structure
-- Placeholder files
-- Basic UI scaffolding
-
-### Upcoming Phases
-- Phase 2: Link Detection & Notifier Injection
-- Phase 3: Popup Interface & Communication
-- Phase 4: AI Integration (Summarizer & Prompt APIs)
-- Phase 5: Analysis Results Display
-- Phase 6: Manual Analysis Page
-- Phase 7: Writer & Rewriter API Integration
-- Phase 8: Data Breach Research (Stretch Goal)
-- Phase 9: Polish & Accessibility
-- Phase 10: Testing & Bug Fixes
-- Phase 11: Documentation & Submission Prep
-
-## Technical Requirements
-
-- Chrome Browser (version with Built-in AI APIs enabled)
-- Manifest V3
-- No external API dependencies (all AI processing is local)
-
-## Privacy & Data
-
-- All analysis happens locally using Chrome's Built-in AI
-- No data is sent to external servers
-- User privacy is our top priority
-- Uses `chrome.storage` API for local data storage only
-
-## Contributing
-
-This project is being developed for the Google Chrome Built-in AI Challenge 2025. 
-
-## License
-
-[Your chosen license]
-
-## Contact
-
-[Your contact information]
-
----
-
-**Note**: This extension requires Chrome's Built-in AI APIs to be enabled. These APIs are part of Chrome's experimental features and may require specific Chrome versions or flags to be enabled.
+🛠️ Technology Stack
+Chrome Built-in AI (Gemini Nano) - On-device language model for analysis
+Chrome Prompt API - Direct integration with Chrome's AI capabilities
+Manifest V3 - Modern Chrome extension architecture
+Vanilla JavaScript - Lightweight and fast
+📦 Installation
+Download the Gemini Nano AI model (one-time, ~1.7 GB)
+Chrome 128+ with AI features enabled
+Load the extension in Developer Mode
+🎯 Perfect For
+Privacy-conscious users
+Legal professionals
+Researchers
+Anyone who wants to understand what they're agreeing to online
+🔒 Privacy First
+All analysis happens locally on your device
+No data sent to external servers
+No tracking, no ads, no data collection
+Open source—see exactly how it works
+Try PolicyPeek today and never blindly accept terms again! 🚀
