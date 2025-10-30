@@ -1,8 +1,6 @@
 // PolicyPeek Manual Analysis Page
 // Handles manual policy text input and analysis
 
-console.log('PolicyPeek analysis page loaded');
-
 // Chrome AI Prompt API state
 let promptSession = null;
 let promptAvailable = false;
@@ -12,26 +10,20 @@ async function initializePromptAPI() {
   try {
     // Check if Prompt API is available
     if (!('LanguageModel' in self)) {
-      console.warn('Chrome AI Prompt API is not available in this browser');
-      console.log('Make sure you are using Chrome 138+ and have enabled AI features');
       promptAvailable = false;
       return false;
     }
 
-    console.log('Prompt API detected, checking availability...');
     const availability = await self.LanguageModel.availability();
-    console.log('Prompt API availability:', availability);
 
     // If model is not available at all
     if (availability === 'no' || availability === 'unavailable') {
-      console.warn('Prompt API is not available on this device');
       promptAvailable = false;
       return false;
     }
 
     // If model is currently downloading, wait
     if (availability === 'downloading') {
-      console.log('Gemini Nano model is currently downloading...');
       showModelDownload();
       promptAvailable = false;
       return false;
@@ -39,16 +31,12 @@ async function initializePromptAPI() {
     
     // If model needs download, show download prompt (unless user skipped)
     if ((availability === 'downloadable' || availability === 'after-download') && !userSkippedDownload) {
-      console.log('Model needs download - showing download prompt to user');
       promptAvailable = false;
       return 'needs-download'; // Special return value
     }
 
     // Try to create session for 'readily' state or if user skipped/initiated download
-    console.log('Creating Prompt API session...');
-    
     if (availability === 'downloadable' || availability === 'after-download') {
-      console.log('Note: User skipped download - will use without AI');
       promptAvailable = false;
       return false;
     }
@@ -59,14 +47,12 @@ async function initializePromptAPI() {
       monitor(m) {
         m.addEventListener('downloadprogress', (e) => {
           const progress = Math.round(e.loaded * 100);
-          console.log(`Gemini Nano model download progress: ${progress}%`);
           updateDownloadProgress(progress);
         });
       }
     });
 
     promptAvailable = true;
-    console.log('✅ Prompt API initialized successfully!');
     return true;
 
   } catch (error) {
@@ -75,7 +61,6 @@ async function initializePromptAPI() {
     
     // Check if it's a gesture error
     if (error.message && error.message.includes('gesture')) {
-      console.log('⚠️ Model download requires user gesture - will retry on user action');
       // Don't set promptAvailable = false yet, we'll retry later
       return false;
     }
@@ -110,8 +95,6 @@ function truncateTextForPrompt(text, maxChars = 8000) {
   if (text.length <= maxChars) {
     return text;
   }
-  
-  console.log(`Text is ${text.length} chars, truncating to ${maxChars} chars for analysis`);
   
   // Try to truncate at a sentence boundary
   const truncated = text.substring(0, maxChars);
@@ -149,7 +132,6 @@ let currentPolicyText = null; // Store current policy text for deep analysis
 
 // Initialize page
 async function init() {
-  console.log('Initializing analysis page...');
   setupEventListeners();
   
   // Check for URL parameters (auto-analysis from popup)
@@ -162,7 +144,6 @@ async function init() {
     showLoading();
     
     // Initialize Chrome AI Prompt API and WAIT for it
-    console.log('URL analysis requested - initializing AI first...');
     const initResult = await initializePromptAPI().catch(err => {
       console.error('Failed to initialize Prompt API:', err);
       return false;
@@ -176,8 +157,6 @@ async function init() {
       window.pendingAnalysis = { url: policyUrl, title: policyTitle };
       return;
     }
-    
-    console.log('AI initialization complete, proceeding with analysis...');
     
     // Now analyze from URL with AI ready
     analyzeFromUrl(policyUrl, policyTitle);
@@ -247,7 +226,6 @@ async function handleAnalyze() {
     return;
   }
   
-  console.log('Starting analysis...');
   isAnalyzing = true;
   analyzeBtn.disabled = true;
   
@@ -256,7 +234,6 @@ async function handleAnalyze() {
   try {
     // Ensure AI is initialized if not already (or try to create session with user gesture)
     if (!promptAvailable && !promptSession) {
-      console.log('AI not yet initialized, attempting to initialize with user gesture...');
       const initialized = await initializePromptAPI().catch(err => {
         console.error('Failed to initialize Prompt API:', err);
         return false;
@@ -266,23 +243,19 @@ async function handleAnalyze() {
       if (!initialized && 'LanguageModel' in self) {
         try {
           const availability = await self.LanguageModel.availability();
-          console.log('Current availability status:', availability);
           
           if (availability === 'downloadable' || availability === 'after-download') {
-            console.log('Attempting to create session with user gesture to trigger download...');
             promptSession = await self.LanguageModel.create({
               systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading. try to make the length of your response as short as possible and if necessary create a section for risky parrts about the policy',
               monitor(m) {
                 m.addEventListener('downloadprogress', (e) => {
                   const progress = Math.round(e.loaded * 100);
-                  console.log(`Gemini Nano model download progress: ${progress}%`);
                   updateDownloadProgress(progress);
                   showModelDownload();
                 });
               }
             });
             promptAvailable = true;
-            console.log('✅ Session created successfully, download may be in progress');
           }
         } catch (createError) {
           console.error('Failed to create session with user gesture:', createError);
@@ -303,8 +276,6 @@ async function handleAnalyze() {
 
 // Analyze policy text with Chrome AI Prompt API
 async function analyzePolicy(text, isDeepAnalysis = false) {
-  console.log('Analyzing policy text:', text.length, 'characters', isDeepAnalysis ? '(DEEP)' : '(SIMPLE)');
-  
   // Store the current policy text for deep analysis later
   currentPolicyText = text;
   
@@ -315,15 +286,11 @@ async function analyzePolicy(text, isDeepAnalysis = false) {
   // Try to use Chrome AI Prompt API if available
   if (promptAvailable && promptSession) {
     try {
-      console.log('Using Chrome AI Prompt API...');
-      console.log('Prompt session:', promptSession);
-      
       // Truncate text if too large (be reasonable with prompt length)
       let textToAnalyze = text;
       if (text.length > 8000) {
         textToAnalyze = truncateTextForPrompt(text, 8000);
         wasTruncated = true;
-        console.log(`⚠️ Text truncated from ${text.length} to ${textToAnalyze.length} characters`);
       }
       
       // Create prompt based on analysis type
@@ -361,8 +328,6 @@ Document to analyze:
 ${textToAnalyze}`;
       }
       
-      console.log('Sending prompt to AI...');
-      
       // Use prompt() for complete response with language specification
       summary = await promptSession.prompt(prompt, {
         outputLanguage: 'en'  // Specify output language to avoid warnings
@@ -374,36 +339,19 @@ ${textToAnalyze}`;
       }
       
       usedAI = true;
-      console.log('✅ AI Analysis generated successfully');
-      console.log('Summary preview:', summary.substring(0, 200));
       
     } catch (error) {
       console.error('❌ AI Analysis failed:', error);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
-      console.log('Falling back to basic analysis...');
       summary = null;
       usedAI = false;
     }
-  } else {
-    console.log('Chrome AI Prompt API not available');
-    console.log('promptAvailable:', promptAvailable);
-    console.log('promptSession:', promptSession);
   }
   
   // If AI failed or unavailable, create basic summary
   if (!summary) {
-    console.log('Creating basic summary...');
     summary = createBasicSummary(text);
-    
-    // Check if we might be able to enable AI with user action
-    if ('LanguageModel' in self) {
-      self.LanguageModel.availability().then(availability => {
-        if (availability === 'downloadable' || availability === 'after-download') {
-          console.log('💡 Hint: AI model is available but needs to be downloaded. Try the manual analysis page for AI-powered analysis.');
-        }
-      }).catch(err => console.log('Could not check availability:', err));
-    }
   }
   
   // Show results
@@ -453,8 +401,6 @@ function createBasicSummary(text) {
 
 // Analyze from URL (when clicking "Analyze" button in popup)
 async function analyzeFromUrl(url, title = 'Policy Document') {
-  console.log('Analyzing policy from URL:', url);
-  
   showLoading();
   
   try {
@@ -470,8 +416,6 @@ async function analyzeFromUrl(url, title = 'Policy Document') {
       )
     ]);
     
-    console.log('Response from background:', response);
-    
     if (!response) {
       throw new Error('No response from background script');
     }
@@ -480,32 +424,26 @@ async function analyzeFromUrl(url, title = 'Policy Document') {
       throw new Error(response.error || 'Failed to fetch policy content');
     }
     
-    console.log('Received policy content:', response.content.length, 'characters');
-    
     // If AI wasn't initialized yet (gesture error), try again now
     // The page load itself can sometimes count as a user gesture
     if (!promptAvailable && !promptSession && 'LanguageModel' in self) {
-      console.log('Retrying AI initialization for URL analysis...');
       try {
         const availability = await self.LanguageModel.availability();
         if (availability === 'downloadable' || availability === 'after-download' || availability === 'readily') {
-          console.log('Attempting to create session for URL analysis...');
           promptSession = await self.LanguageModel.create({
             systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading.',
             monitor(m) {
               m.addEventListener('downloadprogress', (e) => {
                 const progress = Math.round(e.loaded * 100);
-                console.log(`Gemini Nano model download progress: ${progress}%`);
                 updateDownloadProgress(progress);
                 showModelDownload();
               });
             }
           });
           promptAvailable = true;
-          console.log('✅ AI session created successfully for URL analysis');
         }
       } catch (retryError) {
-        console.log('Could not create AI session:', retryError.message);
+        console.error('Could not create AI session:', retryError);
       }
     }
     
@@ -551,8 +489,6 @@ async function handleDeepAnalysis() {
     return;
   }
   
-  console.log('Starting deep analysis...');
-  
   // Check if AI is available
   if (!promptAvailable && !promptSession) {
     alert('Deep analysis requires AI. Please download the AI model or the feature won\'t work properly.');
@@ -586,7 +522,6 @@ async function handleDeepAnalysis() {
 
 // Handle download model button click (USER GESTURE)
 async function handleDownloadModel() {
-  console.log('User clicked download button - attempting to create session with user gesture...');
   downloadModelBtn.disabled = true;
   downloadModelBtn.textContent = 'Downloading...';
   
@@ -598,31 +533,25 @@ async function handleDownloadModel() {
     }
     
     const availability = await self.LanguageModel.availability();
-    console.log('Current availability:', availability);
     
     if (availability === 'readily') {
-      console.log('Model is already ready!');
       promptAvailable = true;
     } else {
       // Create session with user gesture - this will trigger download
-      console.log('Creating session to trigger download...');
       promptSession = await self.LanguageModel.create({
         systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading.',
         monitor(m) {
           m.addEventListener('downloadprogress', (e) => {
             const progress = Math.round(e.loaded * 100);
-            console.log(`Gemini Nano model download progress: ${progress}%`);
             updateDownloadProgress(progress);
           });
         }
       });
       promptAvailable = true;
-      console.log('✅ Session created successfully!');
     }
     
     // If there was a pending analysis from URL, continue it
     if (window.pendingAnalysis) {
-      console.log('Continuing pending URL analysis...');
       await analyzeFromUrl(window.pendingAnalysis.url, window.pendingAnalysis.title);
       window.pendingAnalysis = null;
     } else {
@@ -644,13 +573,11 @@ async function handleDownloadModel() {
 
 // Handle skip download button click
 function handleSkipDownload() {
-  console.log('User skipped AI model download');
   userSkippedDownload = true;
   promptAvailable = false;
   
   // If there was a pending analysis from URL, continue it without AI
   if (window.pendingAnalysis) {
-    console.log('Continuing pending URL analysis without AI...');
     analyzeFromUrl(window.pendingAnalysis.url, window.pendingAnalysis.title);
     window.pendingAnalysis = null;
   } else {

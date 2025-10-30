@@ -22,10 +22,12 @@ const POLICY_KEYWORDS = [
   'privacy & cookies',
   'service terms',
   'data protection policy',
-  'terms',
   'terms of service agreement',
   'privacy statement',
-  'privacy',
+  'data protection',
+  'disclaimer',
+  'legal information',
+  'privacy practices'
 ];
 
 // State
@@ -140,8 +142,24 @@ function scanForPolicyLinks() {
     
     // Check if link matches policy keywords
     const isPolicy = POLICY_KEYWORDS.some(keyword => {
-      // Check link text
-      if (linkText.includes(keyword)) {
+      // For link text, require more exact matching (with word boundaries)
+      // This prevents matching "privacy" in "privacy settings" or random text
+      const words = linkText.split(/\s+/);
+      const keywordWords = keyword.split(/\s+/);
+      
+      // Check if all keyword words appear consecutively in link text
+      let foundInText = false;
+      if (keywordWords.length === 1) {
+        // Single word: check if it's the entire link text or surrounded by word boundaries
+        foundInText = linkText === keyword || 
+                      linkText === keyword + 's' || // plural
+                      new RegExp(`\\b${keyword}\\b`).test(linkText);
+      } else {
+        // Multi-word: check if exact phrase exists
+        foundInText = linkText.includes(keyword);
+      }
+      
+      if (foundInText) {
         return true;
       }
       
@@ -150,9 +168,23 @@ function scanForPolicyLinks() {
       const underscored = keyword.replace(/\s+/g, '_');
       const concatenated = keyword.replace(/\s+/g, '');
       
-      return linkHref.includes(hyphenated) || 
-             linkHref.includes(underscored) || 
-             linkHref.includes(concatenated);
+      // Also check for common URL patterns like /privacy, /terms, etc.
+      const urlPatterns = [
+        `/${hyphenated}`,
+        `/${underscored}`,
+        `/${concatenated}`,
+        `/${hyphenated}/`,
+        `/${underscored}/`,
+        `/${concatenated}/`,
+        `-${hyphenated}`,
+        `-${underscored}`,
+        `_${underscored}`,
+        `=${hyphenated}`,
+        `=${underscored}`,
+        `=${concatenated}`
+      ];
+      
+      return urlPatterns.some(pattern => linkHref.includes(pattern));
     });
     
     if (isPolicy && !link.querySelector('.policypeek-notifier')) {
