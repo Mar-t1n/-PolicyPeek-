@@ -84,6 +84,7 @@ async function loadSettings() {
     settings.notificationsEnabled = stored.notificationsEnabled;
     settings.showMagnifyingGlass = stored.showMagnifyingGlass;
   } catch (error) {
+    // Extension context may be invalidated
     console.error('Error loading settings:', error);
   }
 }
@@ -228,13 +229,19 @@ function scanForPolicyLinks() {
 
 // Notify background script about detected links
 function notifyLinksFound() {
-  chrome.runtime.sendMessage({
-    type: 'LINKS_DETECTED',
-    count: detectedLinks.length,
-    links: detectedLinks.map(l => ({ text: l.text, url: l.url }))
-  }).catch(error => {
-    console.log('Could not send message to background:', error);
-  });
+  try {
+    chrome.runtime.sendMessage({
+      type: 'LINKS_DETECTED',
+      count: detectedLinks.length,
+      links: detectedLinks.map(l => ({ text: l.text, url: l.url }))
+    }).catch(error => {
+      // Extension context may be invalidated, ignore
+      console.log('Could not send message to background:', error);
+    });
+  } catch (error) {
+    // Extension context invalidated, ignore silently
+    console.log('Extension context invalidated:', error);
+  }
 }
 
 // Inject visual notifier badge next to policy link
@@ -338,11 +345,17 @@ function analyzePolicy(policyUrl, policyTitle) {
   // Close tooltip
   closeActiveTooltip();
   
-  // Open analysis page with URL parameters
-  const analysisUrl = chrome.runtime.getURL('analysis/analysis.html') + 
-    `?url=${encodeURIComponent(policyUrl)}&title=${encodeURIComponent(policyTitle)}`;
-  
-  window.open(analysisUrl, '_blank');
+  try {
+    // Open analysis page with URL parameters
+    const analysisUrl = chrome.runtime.getURL('analysis/analysis.html') + 
+      `?url=${encodeURIComponent(policyUrl)}&title=${encodeURIComponent(policyTitle)}`;
+    
+    window.open(analysisUrl, '_blank');
+  } catch (error) {
+    // Extension context invalidated - extension was reloaded
+    console.error('Extension context invalidated. Please refresh the page.', error);
+    alert('PolicyPeek extension was updated. Please refresh this page and try again.');
+  }
 }
 
 // Show notification to user

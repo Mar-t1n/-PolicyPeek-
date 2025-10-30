@@ -44,6 +44,7 @@ async function initializePromptAPI() {
     // Use minimal options - let Chrome use its own defaults
     promptSession = await self.LanguageModel.create({
       systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading.',
+      language: 'en',
       monitor(m) {
         m.addEventListener('downloadprogress', (e) => {
           const progress = Math.round(e.loaded * 100);
@@ -247,6 +248,7 @@ async function handleAnalyze() {
           if (availability === 'downloadable' || availability === 'after-download') {
             promptSession = await self.LanguageModel.create({
               systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading. try to make the length of your response as short as possible and if necessary create a section for risky parrts about the policy',
+              language: 'en',
               monitor(m) {
                 m.addEventListener('downloadprogress', (e) => {
                   const progress = Math.round(e.loaded * 100);
@@ -329,9 +331,7 @@ ${textToAnalyze}`;
       }
       
       // Use prompt() for complete response with language specification
-      summary = await promptSession.prompt(prompt, {
-        outputLanguage: 'en'  // Specify output language to avoid warnings
-      });
+      summary = await promptSession.prompt(prompt);
       
       // Add truncation notice if text was cut
       if (wasTruncated) {
@@ -432,6 +432,7 @@ async function analyzeFromUrl(url, title = 'Policy Document') {
         if (availability === 'downloadable' || availability === 'after-download' || availability === 'readily') {
           promptSession = await self.LanguageModel.create({
             systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading.',
+            language: 'en',
             monitor(m) {
               m.addEventListener('downloadprogress', (e) => {
                 const progress = Math.round(e.loaded * 100);
@@ -540,6 +541,7 @@ async function handleDownloadModel() {
       // Create session with user gesture - this will trigger download
       promptSession = await self.LanguageModel.create({
         systemPrompt: 'You are a helpful AI assistant specialized in analyzing privacy policies and terms of service documents. Provide clear, concise summaries that highlight key points about data collection, user rights, and important terms. Search for potential safety risks that are being hidden by fancy wording and provide the results in small bullet points for easy reading.',
+        language: 'en',
         monitor(m) {
           m.addEventListener('downloadprogress', (e) => {
             const progress = Math.round(e.loaded * 100);
