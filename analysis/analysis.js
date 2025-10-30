@@ -140,10 +140,12 @@ const newAnalysisBtn = document.getElementById('new-analysis-btn');
 const downloadModelBtn = document.getElementById('download-model-btn');
 const skipDownloadBtn = document.getElementById('skip-download-btn');
 const resultsContent = document.getElementById('results-content');
+const deepAnalysisBtn = document.getElementById('deep-analysis-btn');
 
 // State
 let isAnalyzing = false;
 let userSkippedDownload = false;
+let currentPolicyText = null; // Store current policy text for deep analysis
 
 // Initialize page
 async function init() {
@@ -209,6 +211,7 @@ function setupEventListeners() {
   newAnalysisBtn.addEventListener('click', handleNewAnalysis);
   downloadModelBtn.addEventListener('click', handleDownloadModel);
   skipDownloadBtn.addEventListener('click', handleSkipDownload);
+  deepAnalysisBtn.addEventListener('click', handleDeepAnalysis);
   
   // Enable/disable analyze button based on input
   policyInput.addEventListener('input', () => {
@@ -299,8 +302,11 @@ async function handleAnalyze() {
 }
 
 // Analyze policy text with Chrome AI Prompt API
-async function analyzePolicy(text) {
-  console.log('Analyzing policy text:', text.length, 'characters');
+async function analyzePolicy(text, isDeepAnalysis = false) {
+  console.log('Analyzing policy text:', text.length, 'characters', isDeepAnalysis ? '(DEEP)' : '(SIMPLE)');
+  
+  // Store the current policy text for deep analysis later
+  currentPolicyText = text;
   
   let summary = null;
   let usedAI = false;
@@ -320,8 +326,30 @@ async function analyzePolicy(text) {
         console.log(`⚠️ Text truncated from ${text.length} to ${textToAnalyze.length} characters`);
       }
       
-      // Create a concise prompt for policy analysis
-      const prompt = `Analyze this privacy policy and provide a BRIEF summary with only the most critical information:
+      // Create prompt based on analysis type
+      let prompt;
+      if (isDeepAnalysis) {
+        prompt = `Perform a comprehensive deep analysis of this privacy policy. Provide detailed insights on:
+
+**Key Points**: All important takeaways and notable terms
+**Data Collection**: Detailed breakdown of what data is collected, how, and why
+**Data Usage**: How the collected data is used, processed, and stored
+**Third-Party Sharing**: Who receives the data and under what circumstances
+**User Rights**: What rights users have (access, deletion, opt-out, etc.)
+**Data Retention**: How long data is kept
+**Security Measures**: How data is protected
+**Risks & Red Flags**: Privacy concerns, unusual terms, vague language, or problematic clauses
+**Cookies & Tracking**: Information about cookies, tracking, and analytics
+**International Transfers**: Data transfers across borders
+**Changes to Policy**: How policy updates are handled
+**Contact & Compliance**: How to contact and what regulations they follow
+
+Be thorough and specific. Include quotes from the policy when highlighting concerns.
+
+Document to analyze:
+${textToAnalyze}`;
+      } else {
+        prompt = `Analyze this privacy policy and provide a BRIEF summary with only the most critical information:
 
 **Key Points** (max 3 bullets): Most important takeaways
 **Data Collection** (max 2 bullets): What data is collected
@@ -331,6 +359,7 @@ Keep it SHORT. Only include truly important information. Use brief bullet points
 
 Document to analyze:
 ${textToAnalyze}`;
+      }
       
       console.log('Sending prompt to AI...');
       
@@ -383,7 +412,8 @@ ${textToAnalyze}`;
     wordCount: text.split(/\s+/).length,
     characterCount: text.length,
     fullText: text,
-    usedAI: usedAI
+    usedAI: usedAI,
+    isDeepAnalysis: isDeepAnalysis
   });
 }
 
@@ -511,6 +541,47 @@ function handleNewAnalysis() {
   hideAll();
   inputSection.classList.remove('hidden');
   handleClear();
+  currentPolicyText = null; // Clear stored policy text
+}
+
+// Handle deep analysis button click
+async function handleDeepAnalysis() {
+  if (!currentPolicyText) {
+    alert('No policy text available for deep analysis.');
+    return;
+  }
+  
+  console.log('Starting deep analysis...');
+  
+  // Check if AI is available
+  if (!promptAvailable && !promptSession) {
+    alert('Deep analysis requires AI. Please download the AI model or the feature won\'t work properly.');
+    return;
+  }
+  
+  deepAnalysisBtn.disabled = true;
+  deepAnalysisBtn.textContent = 'Analyzing...';
+  
+  showLoading();
+  const loadingText = document.querySelector('#loading-section p');
+  if (loadingText) {
+    loadingText.textContent = 'Performing deep analysis...';
+  }
+  const loadingDetail = document.querySelector('.loading-detail');
+  if (loadingDetail) {
+    loadingDetail.textContent = 'This may take longer than simple analysis';
+  }
+  
+  try {
+    // Run deep analysis with the stored policy text
+    await analyzePolicy(currentPolicyText, true);
+  } catch (error) {
+    console.error('Deep analysis error:', error);
+    showError(error.message || 'An error occurred during deep analysis');
+  } finally {
+    deepAnalysisBtn.disabled = false;
+    deepAnalysisBtn.textContent = 'Run Deep Analysis';
+  }
 }
 
 // Handle download model button click (USER GESTURE)
@@ -601,13 +672,24 @@ function showResults(data) {
   hideAll();
   resultsSection.classList.remove('hidden');
   
+  // Hide or show deep analysis button based on analysis type
+  const deepAnalysisSection = document.getElementById('deep-analysis-section');
+  if (data.isDeepAnalysis) {
+    // Hide the deep analysis button if we're already showing deep analysis
+    deepAnalysisSection.classList.add('hidden');
+  } else {
+    // Show the deep analysis button for simple analysis
+    deepAnalysisSection.classList.remove('hidden');
+  }
+  
   // Build results HTML
   let html = '';
   
-  // AI status badge
+  // AI status badge with analysis type
   if (data.usedAI !== undefined) {
     const badgeColor = data.usedAI ? '#4caf50' : '#ff9800';
-    const badgeText = data.usedAI ? '✓ AI-Powered Analysis' : '⚠ Basic Analysis';
+    const analysisType = data.isDeepAnalysis ? 'Deep Analysis' : 'Simple Analysis';
+    const badgeText = data.usedAI ? `✓ AI-Powered ${analysisType}` : '⚠ Basic Analysis';
     html += `
       <div style="display: inline-block; padding: 6px 12px; background: ${badgeColor}; color: white; border-radius: 4px; margin-bottom: 16px; font-size: 13px; font-weight: 600;">
         ${badgeText}

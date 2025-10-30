@@ -486,6 +486,92 @@ body::after {
   margin-top: 8px;
 }
 
+/* Deep Analysis Section */
+.deep-analysis-section {
+  margin: 32px 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border: none;
+}
+
+.deep-analysis-section::before {
+  display: none;
+}
+
+.deep-analysis-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px dashed #dee2e6;
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.deep-analysis-card:hover {
+  border-color: #adb5bd;
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.deep-analysis-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.deep-analysis-card h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 12px 0;
+  padding: 0;
+}
+
+.deep-analysis-card h3::before {
+  display: none;
+}
+
+.deep-analysis-description {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#deep-analysis-btn {
+  max-width: 300px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  font-size: 15px;
+  padding: 14px 28px;
+}
+
+#deep-analysis-btn:hover {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.3);
+}
+
+#deep-analysis-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Utility Classes */
 .hidden {
   display: none !important;

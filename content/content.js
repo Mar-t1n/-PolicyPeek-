@@ -23,7 +23,9 @@ const POLICY_KEYWORDS = [
   'service terms',
   'data protection policy',
   'terms',
-  'terms of service agreement'
+  'terms of service agreement',
+  'privacy statement',
+  'privacy',
 ];
 
 // State
