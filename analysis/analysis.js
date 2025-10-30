@@ -320,17 +320,14 @@ async function analyzePolicy(text) {
         console.log(`⚠️ Text truncated from ${text.length} to ${textToAnalyze.length} characters`);
       }
       
-      // Create a detailed prompt for policy analysis
-      const prompt = `Please analyze this privacy policy or terms of service document and provide:
+      // Create a concise prompt for policy analysis
+      const prompt = `Analyze this privacy policy and provide a BRIEF summary with only the most critical information:
 
-1. **Key Points**: The most important things users should know
-2. **Data Collection**: What personal data is collected
-3. **Data Usage**: How the data is used
-4. **Third-Party Sharing**: If and how data is shared with others
-5. **User Rights**: What rights users have regarding their data
-6. **Notable Concerns**: Any concerning or unusual terms
+**Key Points** (max 3 bullets): Most important takeaways
+**Data Collection** (max 2 bullets): What data is collected
+**Risks** (max 2 bullets): Main privacy concerns or unusual terms
 
-Keep the summary clear and concise. Use bullet points for readability.
+Keep it SHORT. Only include truly important information. Use brief bullet points.
 
 Document to analyze:
 ${textToAnalyze}`;

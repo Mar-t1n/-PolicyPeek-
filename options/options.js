@@ -18,7 +18,7 @@ async function init() {
 async function loadSettings() {
   try {
     const settings = await chrome.storage.local.get({
-      notificationsEnabled: true,
+      notificationsEnabled: false,
       autoScan: true,
       showMagnifyingGlass: true
     });
