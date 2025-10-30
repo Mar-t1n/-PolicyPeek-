@@ -165,11 +165,16 @@ function scanForPolicyLinks() {
       }
       
       // Check href with various formats: hyphenated, underscored, concatenated
+      // Only check in pathname and search params, not the entire URL
+      const url = new URL(link.href);
+      const pathname = url.pathname.toLowerCase();
+      const search = url.search.toLowerCase();
+      
       const hyphenated = keyword.replace(/\s+/g, '-');
       const underscored = keyword.replace(/\s+/g, '_');
       const concatenated = keyword.replace(/\s+/g, '');
       
-      // Also check for common URL patterns like /privacy, /terms, etc.
+      // Check for specific URL patterns (more restrictive)
       const urlPatterns = [
         `/${hyphenated}`,
         `/${underscored}`,
@@ -177,15 +182,20 @@ function scanForPolicyLinks() {
         `/${hyphenated}/`,
         `/${underscored}/`,
         `/${concatenated}/`,
-        `-${hyphenated}`,
-        `-${underscored}`,
-        `_${underscored}`,
-        `=${hyphenated}`,
-        `=${underscored}`,
-        `=${concatenated}`
+        `/${hyphenated}.`,  // e.g., /privacy-policy.html
+        `/${underscored}.`,
+        `/${concatenated}.`
       ];
       
-      return urlPatterns.some(pattern => linkHref.includes(pattern));
+      // Check pathname for patterns
+      const foundInPath = urlPatterns.some(pattern => pathname.includes(pattern));
+      
+      // Check search params more carefully (e.g., ?page=privacy-policy)
+      const foundInSearch = search.includes(`=${hyphenated}`) || 
+                           search.includes(`=${underscored}`) ||
+                           search.includes(`=${concatenated}`);
+      
+      return foundInPath || foundInSearch;
     });
     
     if (isPolicy && !link.querySelector('.policypeek-notifier')) {
