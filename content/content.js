@@ -23,7 +23,9 @@ const POLICY_KEYWORDS = [
   'service terms',
   'data protection policy',
   'terms',
-  'terms of service agreement'
+  'terms of service agreement',
+  'privacy statement',
+  'privacy',
 ];
 
 // State
@@ -33,6 +35,7 @@ let scanTimeout = null;
 let processedUrls = new Set();
 let activeTooltip = null;
 let settings = {
+  notificationsEnabled: false,
   showMagnifyingGlass: true
 };
 
@@ -57,9 +60,14 @@ function init() {
   
   // Listen for settings changes
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.showMagnifyingGlass) {
-      settings.showMagnifyingGlass = changes.showMagnifyingGlass.newValue;
-      updateNotifierVisibility();
+    if (area === 'local') {
+      if (changes.showMagnifyingGlass) {
+        settings.showMagnifyingGlass = changes.showMagnifyingGlass.newValue;
+        updateNotifierVisibility();
+      }
+      if (changes.notificationsEnabled) {
+        settings.notificationsEnabled = changes.notificationsEnabled.newValue;
+      }
     }
   });
 }
@@ -68,8 +76,10 @@ function init() {
 async function loadSettings() {
   try {
     const stored = await chrome.storage.local.get({
+      notificationsEnabled: false,
       showMagnifyingGlass: true
     });
+    settings.notificationsEnabled = stored.notificationsEnabled;
     settings.showMagnifyingGlass = stored.showMagnifyingGlass;
   } catch (error) {
     console.error('Error loading settings:', error);
@@ -171,6 +181,14 @@ function scanForPolicyLinks() {
   // Notify background script if links were found
   if (detectedLinks.length > 0) {
     notifyLinksFound();
+    
+    // Show notification if enabled
+    if (settings.notificationsEnabled) {
+      const message = detectedLinks.length === 1 
+        ? 'Found 1 policy link on this page' 
+        : `Found ${detectedLinks.length} policy links on this page`;
+      showNotification(message, 'success');
+    }
   }
   
   isScanning = false;
