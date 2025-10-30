@@ -22,10 +22,12 @@ const POLICY_KEYWORDS = [
   'privacy & cookies',
   'service terms',
   'data protection policy',
-  'terms',
   'terms of service agreement',
   'privacy statement',
-  'privacy',
+  'data protection',
+  'disclaimer',
+  'legal information',
+  'privacy practices'
 ];
 
 // State
@@ -82,6 +84,7 @@ async function loadSettings() {
     settings.notificationsEnabled = stored.notificationsEnabled;
     settings.showMagnifyingGlass = stored.showMagnifyingGlass;
   } catch (error) {
+    // Extension context may be invalidated
     console.error('Error loading settings:', error);
   }
 }
@@ -140,19 +143,59 @@ function scanForPolicyLinks() {
     
     // Check if link matches policy keywords
     const isPolicy = POLICY_KEYWORDS.some(keyword => {
-      // Check link text
-      if (linkText.includes(keyword)) {
+      // For link text, require more exact matching (with word boundaries)
+      // This prevents matching "privacy" in "privacy settings" or random text
+      const words = linkText.split(/\s+/);
+      const keywordWords = keyword.split(/\s+/);
+      
+      // Check if all keyword words appear consecutively in link text
+      let foundInText = false;
+      if (keywordWords.length === 1) {
+        // Single word: check if it's the entire link text or surrounded by word boundaries
+        foundInText = linkText === keyword || 
+                      linkText === keyword + 's' || // plural
+                      new RegExp(`\\b${keyword}\\b`).test(linkText);
+      } else {
+        // Multi-word: check if exact phrase exists
+        foundInText = linkText.includes(keyword);
+      }
+      
+      if (foundInText) {
         return true;
       }
       
       // Check href with various formats: hyphenated, underscored, concatenated
+      // Only check in pathname and search params, not the entire URL
+      const url = new URL(link.href);
+      const pathname = url.pathname.toLowerCase();
+      const search = url.search.toLowerCase();
+      
       const hyphenated = keyword.replace(/\s+/g, '-');
       const underscored = keyword.replace(/\s+/g, '_');
       const concatenated = keyword.replace(/\s+/g, '');
       
-      return linkHref.includes(hyphenated) || 
-             linkHref.includes(underscored) || 
-             linkHref.includes(concatenated);
+      // Check for specific URL patterns (more restrictive)
+      const urlPatterns = [
+        `/${hyphenated}`,
+        `/${underscored}`,
+        `/${concatenated}`,
+        `/${hyphenated}/`,
+        `/${underscored}/`,
+        `/${concatenated}/`,
+        `/${hyphenated}.`,  // e.g., /privacy-policy.html
+        `/${underscored}.`,
+        `/${concatenated}.`
+      ];
+      
+      // Check pathname for patterns
+      const foundInPath = urlPatterns.some(pattern => pathname.includes(pattern));
+      
+      // Check search params more carefully (e.g., ?page=privacy-policy)
+      const foundInSearch = search.includes(`=${hyphenated}`) || 
+                           search.includes(`=${underscored}`) ||
+                           search.includes(`=${concatenated}`);
+      
+      return foundInPath || foundInSearch;
     });
     
     if (isPolicy && !link.querySelector('.policypeek-notifier')) {
@@ -196,13 +239,19 @@ function scanForPolicyLinks() {
 
 // Notify background script about detected links
 function notifyLinksFound() {
-  chrome.runtime.sendMessage({
-    type: 'LINKS_DETECTED',
-    count: detectedLinks.length,
-    links: detectedLinks.map(l => ({ text: l.text, url: l.url }))
-  }).catch(error => {
-    console.log('Could not send message to background:', error);
-  });
+  try {
+    chrome.runtime.sendMessage({
+      type: 'LINKS_DETECTED',
+      count: detectedLinks.length,
+      links: detectedLinks.map(l => ({ text: l.text, url: l.url }))
+    }).catch(error => {
+      // Extension context may be invalidated, ignore
+      console.log('Could not send message to background:', error);
+    });
+  } catch (error) {
+    // Extension context invalidated, ignore silently
+    console.log('Extension context invalidated:', error);
+  }
 }
 
 // Inject visual notifier badge next to policy link
@@ -306,11 +355,17 @@ function analyzePolicy(policyUrl, policyTitle) {
   // Close tooltip
   closeActiveTooltip();
   
-  // Open analysis page with URL parameters
-  const analysisUrl = chrome.runtime.getURL('analysis/analysis.html') + 
-    `?url=${encodeURIComponent(policyUrl)}&title=${encodeURIComponent(policyTitle)}`;
-  
-  window.open(analysisUrl, '_blank');
+  try {
+    // Open analysis page with URL parameters
+    const analysisUrl = chrome.runtime.getURL('analysis/analysis.html') + 
+      `?url=${encodeURIComponent(policyUrl)}&title=${encodeURIComponent(policyTitle)}`;
+    
+    window.open(analysisUrl, '_blank');
+  } catch (error) {
+    // Extension context invalidated - extension was reloaded
+    console.error('Extension context invalidated. Please refresh the page.', error);
+    alert('PolicyPeek extension was updated. Please refresh this page and try again.');
+  }
 }
 
 // Show notification to user
