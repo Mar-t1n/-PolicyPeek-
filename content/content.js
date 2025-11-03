@@ -27,7 +27,8 @@ const POLICY_KEYWORDS = [
   'data protection',
   'disclaimer',
   'legal information',
-  'privacy practices'
+  'privacy practices',
+  'security policy',
 ];
 
 // State

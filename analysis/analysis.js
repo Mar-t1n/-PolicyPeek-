@@ -318,13 +318,19 @@ Be thorough and specific. Include quotes from the policy when highlighting conce
 Document to analyze:
 ${textToAnalyze}`;
       } else {
-        prompt = `Analyze this privacy policy and provide a BRIEF summary with only the most critical information:
+        prompt = `Analyze this privacy policy and provide a concise but informative summary covering these key areas:
 
-**Key Points** (max 3 bullets): Most important takeaways
-**Data Collection** (max 2 bullets): What data is collected
-**Risks** (max 2 bullets): Main privacy concerns or unusual terms
+**What Data They Collect**: List the specific types of personal data collected (e.g., name, email, location, browsing data, device info, etc.)
 
-Keep it SHORT. Only include truly important information. Use brief bullet points.
+**How They Use Your Data**: Explain what they actually DO with your data (advertising, analytics, personalization, selling, etc.)
+
+**Who Gets Your Data**: List any third parties, partners, or advertisers who receive your information
+
+**Your Rights**: What control do you have? (Can you delete data, opt-out, access your info, etc.)
+
+**Red Flags**: Any concerning practices, vague language, broad permissions, or unusual terms that users should be aware of
+
+Be specific and direct. Focus on what actually matters to users' privacy. Use clear, plain language.
 
 Document to analyze:
 ${textToAnalyze}`;
